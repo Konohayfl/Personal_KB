@@ -12,6 +12,7 @@ venv/
 wenkb-server/resources/database/
 wenkb-server/resources/static/upload/
 wenkb-server/resources/vector_store/
+wenkb-server/resources/model/m3e/m3e-small/pytorch_model.bin
 
 # Frontend dependencies and build output
 wenkb-client/node_modules/
