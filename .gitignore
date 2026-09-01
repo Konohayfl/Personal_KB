@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+.env.*
+
+# Runtime data and logs
+*.log
+wenkb-server/resources/database/
+wenkb-server/resources/static/upload/
+wenkb-server/resources/vector_store/
+
+# Frontend dependencies and build output
+wenkb-client/node_modules/
+wenkb-client/dist/
+wenkb-client/dist-ssr/
+wenkb-client/*.local
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
