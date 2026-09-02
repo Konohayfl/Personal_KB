@@ -22,6 +22,7 @@
 ## 运行与操作文档
 
 - 操作流程：[docs/wenkb_operation_guide.md](docs/wenkb_operation_guide.md)
+- 代码维护交接：[docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)
 
 ## 后续待补充
 
