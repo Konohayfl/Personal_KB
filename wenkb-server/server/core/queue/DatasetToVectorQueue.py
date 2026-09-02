@@ -46,5 +46,5 @@ def consumer():
       # 修改状态
       update_status(dtsetId, 'ready')
 
-thread = threading.Thread(target=consumer)
+thread = threading.Thread(target=consumer, daemon=True)
 thread.start()

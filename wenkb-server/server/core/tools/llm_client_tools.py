@@ -1,8 +1,9 @@
+import time
+from functools import wraps
 from logger import logger
 from langchain_openai import ChatOpenAI
 from langchain_community.llms import Ollama
 from langchain_community.embeddings import HuggingFaceEmbeddings, OllamaEmbeddings, OpenAIEmbeddings
-from cachetools import cached, TTLCache
 from sqlalchemy import select
 from server.db.DbManager import session_scope
 from server.model.orm_sys import ModelParam, ModelPrvdInfo, ModelPrvdModl, SettingParam, SettingEmrt
@@ -16,11 +17,32 @@ DEFAULT_EMBEDDING_DEVICE = 'cpu'
 
 DEFAULT_EMBEDDING_FUNCTION_MAP = {} # { modelName: function }
 
-# 创建一个缓存对象，缓存最大大小为100，每个键缓存60秒
-# 缓存清空的问题需要处理，暂时不管
-MODEL_ARGS_CACHE = TTLCache(maxsize=100, ttl=60)
-LLM_CLIENT_CACHE = TTLCache(maxsize=100, ttl=60)
-EMBEDDING_FUNCTION_CACHE = TTLCache(maxsize=100, ttl=60)
+def ttl_cached(ttl_seconds: int = 60, maxsize: int = 100):
+  cache = {}
+
+  def decorator(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+      key = (args, tuple(sorted(kwargs.items())))
+      now = time.time()
+      cached_value = cache.get(key)
+      if cached_value is not None:
+        expires_at, value = cached_value
+        if expires_at > now:
+          return value
+        cache.pop(key, None)
+
+      value = fn(*args, **kwargs)
+      if len(cache) >= maxsize:
+        oldest_key = min(cache.items(), key=lambda item: item[1][0])[0]
+        cache.pop(oldest_key, None)
+      cache[key] = (now + ttl_seconds, value)
+      return value
+
+    wrapper.cache_clear = cache.clear
+    return wrapper
+
+  return decorator
 
 class LLMClient:
   def __init__(self, userId: str = None, modlId: str = None, temperature: float = 0.1):
@@ -69,7 +91,7 @@ class EmbeddingFunction:
       return OpenAIEmbeddings(model=self.model, openai_api_base=self.args.get('base_url', None), openai_api_key=self.args.get('api_key', None))
 
 # 获取知识库的嵌入模型
-@cached(EMBEDDING_FUNCTION_CACHE)
+@ttl_cached(ttl_seconds=60, maxsize=100)
 def get_repos_embedding_function(reposId:str):
   with session_scope(True) as session:
     repos = session.get(ReposInfo, reposId)
@@ -105,7 +127,7 @@ def get_default_model_arguments(modlTyp: str = 'llm'):
   return {}
 
 # 根据用户id和模型id获取模型参数
-@cached(MODEL_ARGS_CACHE)  # 使用缓存装饰器
+@ttl_cached(ttl_seconds=60, maxsize=100)
 def get_model_arguments(userId: str = None, modlId: str = None, modlTyp: str = 'llm'):
   if (userId is None or userId == ''):
     logger.warn(f'llm_client_tools.get_model_arguments: userId is None, use default {modlTyp} model arguments')

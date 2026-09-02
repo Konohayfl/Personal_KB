@@ -1,4 +1,13 @@
 import asyncio
+import os
+import sys
+
+SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.getcwd() != SERVER_DIR:
+  os.chdir(SERVER_DIR)
+if SERVER_DIR not in sys.path:
+  sys.path.insert(0, SERVER_DIR)
+
 import uvicorn
 from fastapi import FastAPI, Request, APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
