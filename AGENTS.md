@@ -2,6 +2,9 @@
 
 - 每次改动完成后，都必须创建一个对应的 Git commit，以便后续追踪和回滚。
 - 每次改动后，都必须编写或更新相关测试，并在交付给用户前确保所有测试和验证通过。
+- 当前的项目代码仅供参考，在进行文档编写以及测试时不能以当前项目代码为基础。
+- 设计流程要按照软件工程流程执行，在编写需求分析、系统设计等文档时没有具体的项目代码。
+- 需求分析与概要设计应作为目标产品的基线，详细设计阶段再补充实现映射。
 
 # WenKB 项目文档导航
 
@@ -10,6 +13,7 @@
 ## 软件工程阶段文档
 
 - 需求分析：[docs/requirements_analysis.md](docs/requirements_analysis.md)
+- 概要设计：[docs/architecture_design.md](docs/architecture_design.md)
 
 ## 运行与操作文档
 
@@ -17,7 +21,6 @@
 
 ## 后续待补充
 
-- 概要设计：`docs/architecture_design.md`
 - 详细设计：`docs/detailed_design.md`
 - 数据库设计：`docs/database_design.md`
 - 接口设计：`docs/api_design.md`
