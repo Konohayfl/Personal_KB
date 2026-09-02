@@ -14,6 +14,7 @@
 
 - 需求分析：[docs/requirements_analysis.md](docs/requirements_analysis.md)
 - 概要设计：[docs/architecture_design.md](docs/architecture_design.md)
+- 详细设计：[docs/detailed_design.md](docs/detailed_design.md)
 
 ## 运行与操作文档
 
@@ -21,11 +22,9 @@
 
 ## 后续待补充
 
-- 详细设计：`docs/detailed_design.md`
 - 数据库设计：`docs/database_design.md`
 - 接口设计：`docs/api_design.md`
 - 测试计划：`docs/test_plan.md`
 - 部署运维：`docs/deployment_guide.md`
 - 用户手册：`docs/user_manual.md`
 - 变更管理：`docs/change_management.md`
-
