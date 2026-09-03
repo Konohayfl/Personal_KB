@@ -1,6 +1,6 @@
 # WenKB 代码维护交接记录
 
-版本：v0.7
+版本：v0.8
 日期：2026-09-03
 状态：本轮维护已完成
 
@@ -102,6 +102,12 @@
 - 修正后端启动说明，明确必须先进入 `wenkb-server` 目录再执行 `python app.py`。
 - 更新 README 测试，校验前后端目录切换命令存在。
 
+### 2.13 模型 API Key 加密修复
+
+- 修复 `wenkb-server/server/utils/secretutils.py` 使用 `xxxx` 作为 AES 密钥和 IV 导致的 `Incorrect AES key length (4 bytes)`。
+- 后端默认使用与客户端加密约定兼容的有效 AES 密钥和 IV，并支持通过 `WENKB_AES_KEY`、`WENKB_AES_IV` 环境变量覆盖。
+- 增加 AES 参数长度校验和 API Key 加解密回归测试，避免模型供应商配置再次因占位密钥失败。
+
 ## 3. 当前未完成事项
 
 暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
@@ -111,6 +117,8 @@
 本轮维护涉及以下文件，且已纳入本次提交：
 
 - `AGENTS.md`
+- `wenkb-server/server/utils/secretutils.py`
+- `tests/test_code_maintenance.py`
 - `docs/change_management.md`
 - `docs/code_maintenance_handoff.md`
 - `docs/wenkb_operation_guide.md`
@@ -119,7 +127,7 @@
 - `tests/test_readme.py`
 - `tests/test_operation_guide.py`
 
-这些改动属于本轮文档维护，不涉及应用代码。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
+这些改动包含模型 API Key 加密缺陷修复及其测试、维护记录和规则记录。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
 
 ## 5. 验证状态
 
@@ -129,7 +137,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 20 tests - OK`。
+当前验证结果为 `Ran 21 tests - OK`。
 
 ## 6. 下次恢复建议
 

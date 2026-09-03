@@ -176,6 +176,15 @@ class CodeMaintenanceTest(unittest.TestCase):
         self.assertIn('"error_id" text(32) NOT NULL', upgrade_baseline)
         self.assertIn("idx_knb_dataset_index_error_query", upgrade_baseline)
 
+    def test_model_secret_encryption_round_trip_uses_valid_aes_parameters(self):
+        from server.utils.secretutils import AES_IV, AES_KEY, aes_decrypt, aes_encrypt
+
+        self.assertIn(len(AES_KEY.encode("utf-8")), (16, 24, 32))
+        self.assertEqual(len(AES_IV.encode("utf-8")), 16)
+        encrypted = aes_encrypt("test-tongyi-api-key")
+        self.assertNotEqual(encrypted, "test-tongyi-api-key")
+        self.assertEqual(aes_decrypt(encrypted), "test-tongyi-api-key")
+
 
 if __name__ == "__main__":
     unittest.main()

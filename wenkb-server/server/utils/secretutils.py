@@ -1,12 +1,20 @@
 import base64
+import os
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import hashlib
 
-AES_KEY = 'xxxx'
-AES_IV = 'xxxx'
+# Keep the defaults compatible with the client encryption contract while
+# allowing deployments to provide their own server-side values.
+AES_KEY = os.getenv('WENKB_AES_KEY', 'X74%B>P2A|$w"!vC&P)xbk1"K&&03Lyt')
+AES_IV = os.getenv('WENKB_AES_IV', 'VvIuBncwj8g37s69')
 SHA256_SALT = 'xxxx'
 DEFAULT_ENCODING = 'utf-8'
+
+if len(AES_KEY.encode(DEFAULT_ENCODING)) not in (16, 24, 32):
+  raise ValueError('WENKB_AES_KEY must encode to 16, 24, or 32 bytes')
+if len(AES_IV.encode(DEFAULT_ENCODING)) != AES.block_size:
+  raise ValueError('WENKB_AES_IV must encode to 16 bytes')
 
 def sha256_encrypt(text):
   return sha256_encrypt_(text, SHA256_SALT)
