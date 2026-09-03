@@ -113,7 +113,7 @@ def vector_update_document(reposId: str, document_id: str, document: Document):
 
 # 删除向量库索引
 def vector_delete(reposId: str, ids: Optional[List[str]] = None):
-  if (len(ids) == 0):
+  if (not ids):
     return
   vector = get_or_build_vector_db(reposId=reposId)
   if hasattr(
@@ -131,6 +131,12 @@ def vector_delete(reposId: str, ids: Optional[List[str]] = None):
     vector.delete(ids=ids)
 # 删除向量库数据集
 def vector_delete_collection(reposId: str):
-  vector = get_or_build_vector_db(reposId=reposId)
-  vector.delete_collection()
-  del VECTOR_STORE_DICT[reposId]
+  vector = VECTOR_STORE_DICT.pop(reposId, None)
+  if vector is not None:
+    vector.delete_collection()
+    return
+
+  client = chromadb.PersistentClient(path=get_repos_index_dir(reposId=reposId))
+  collection_names = {collection.name for collection in client.list_collections()}
+  if reposId in collection_names:
+    client.delete_collection(name=reposId)

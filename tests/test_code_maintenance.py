@@ -1,0 +1,181 @@
+from pathlib import Path
+import json
+import runpy
+import sys
+import unittest
+from unittest.mock import Mock, patch
+
+
+class CodeMaintenanceTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parents[1]
+        server_dir = root / "wenkb-server"
+        if str(server_dir) not in sys.path:
+            sys.path.insert(0, str(server_dir))
+
+    def test_health_endpoint_is_registered_and_reports_database(self):
+        root = Path(__file__).resolve().parents[1]
+        namespace = runpy.run_path(
+            str(root / "wenkb-server" / "app.py"),
+            run_name="wenkb_server_health_test",
+        )
+        routes = {
+            route.path: route
+            for route in namespace["app"].routes
+            if hasattr(route, "path")
+        }
+        self.assertIn("/health", routes)
+        response = routes["/health"].endpoint()
+        self.assertTrue(response["success"])
+        self.assertEqual(response["data"]["status"], "ok")
+        self.assertEqual(response["data"]["database"], "ok")
+
+    def test_retrieval_sources_include_stable_quote_identity(self):
+        from langchain_core.documents import Document
+        from server.core.tools.ask_to_llm import prob_related_documents_and_score
+
+        sources = prob_related_documents_and_score([
+            (
+                Document(
+                    page_content="片段内容",
+                    metadata={
+                        "dtsetId": "dataset-1",
+                        "dtsetNm": "资料",
+                        "fileNm": "资料.md",
+                        "fileTyp": "md",
+                        "chkId": "chunk-1",
+                    },
+                ),
+                0.12,
+            )
+        ])
+
+        self.assertEqual(sources[0]["sourceObjectType"], "chunk")
+        self.assertEqual(sources[0]["sourceObjectId"], "chunk-1")
+        self.assertEqual(sources[0]["chkId"], "chunk-1")
+        self.assertEqual(sources[0]["content"], "片段内容")
+
+    def test_message_quotes_are_persisted_as_snapshots(self):
+        from server.core.tools.ask_to_llm import save_message_quotes
+        from server.model.entity_knb import ChatMesg
+
+        session = Mock()
+        context = Mock()
+        context.__enter__ = Mock(return_value=session)
+        context.__exit__ = Mock(return_value=False)
+        message = ChatMesg(
+            mesgId="message-1",
+            chatId="chat-1",
+            reposId="repo-1",
+        )
+        sources = [{
+            "dtsetId": "dataset-1",
+            "dtsetNm": "资料",
+            "fileNm": "资料.md",
+            "fileTyp": "md",
+            "score": 0.25,
+            "content": "引用快照",
+            "sourceObjectType": "chunk",
+            "sourceObjectId": "chunk-1",
+            "chkId": "chunk-1",
+        }]
+
+        with patch("server.core.tools.ask_to_llm.session_scope", return_value=context):
+            save_message_quotes(message, sources)
+
+        session.execute.assert_called_once()
+        session.add_all.assert_called_once()
+        quote = session.add_all.call_args.args[0][0]
+        self.assertEqual(quote.mesgId, "message-1")
+        self.assertEqual(quote.dtsetId, "dataset-1")
+        self.assertEqual(quote.srcObjId, "chunk-1")
+        self.assertEqual(quote.content, "引用快照")
+        self.assertEqual(quote.quoteOrder, 0)
+
+    def test_stream_failure_persists_fallback_message(self):
+        from server.core.tools.ask_to_llm import ask_to_llm_stream
+        from server.model.entity_knb import ChatMesg, ReposSetting
+
+        session = Mock()
+        context = Mock()
+        context.__enter__ = Mock(return_value=session)
+        context.__exit__ = Mock(return_value=False)
+        session.get.return_value = None
+        session.merge = Mock()
+        session.execute = Mock()
+        session.add_all = Mock()
+
+        fake_client = Mock()
+
+        def stream(_):
+            yield "部分回答"
+            raise RuntimeError("boom")
+
+        fake_client.stream.side_effect = stream
+
+        setting = ReposSetting(
+            reposId="repo-1",
+            llmTptur=0.2,
+            maxHist=4,
+            maxCtx=4,
+            smlrTrval=0.5,
+            topK=4,
+        )
+        chat_mesg = ChatMesg(
+            mesgId="message-1",
+            reposId="repo-1",
+            chatId="chat-1",
+        )
+
+        with patch("server.core.tools.ask_to_llm.get_user_llm_client", return_value=fake_client), patch(
+            "server.core.tools.ask_to_llm.get_question_prompts_and_sources",
+            return_value=("prompt", []),
+        ), patch("server.core.tools.ask_to_llm.session_scope", return_value=context):
+            outputs = list(
+                ask_to_llm_stream(
+                    setting=setting,
+                    chatMesg=chat_mesg,
+                    question="问题",
+                    userId="user-1",
+                )
+            )
+
+        self.assertIn("chat_message_error", outputs[1])
+        self.assertEqual(
+            outputs[-2],
+            json.dumps(
+                {"type": "chat_message_chunk", "data": "很抱歉，似乎发生了错误"},
+                ensure_ascii=False,
+            ),
+        )
+        self.assertIn("chat_message_quote", outputs[-1])
+        self.assertEqual(session.merge.call_args.args[0].mesgCntnt, "很抱歉，似乎发生了错误")
+
+    def test_quote_migration_and_schema_version_are_aligned(self):
+        root = Path(__file__).resolve().parents[1]
+        common = (root / "wenkb-server" / "config" / "common.py").read_text(
+            encoding="utf-8"
+        )
+        migration = (
+            root / "wenkb-server" / "server" / "db" / "upgrade" / "ddl" / "5.sql"
+        ).read_text(encoding="utf-8")
+        fresh_install = (
+            root / "wenkb-server" / "server" / "db" / "upgrade" / "ddl" / "0.sql"
+        ).read_text(encoding="utf-8")
+        upgrade_baseline = (
+            root / "wenkb-server" / "server" / "db" / "upgrade" / "ddl" / "2.sql"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("DB_SCHEMA_VERSION = 5", common)
+        self.assertIn('ALTER TABLE "t_knb_dataset_index_error" RENAME TO "t_knb_dataset_index_error_old"', migration)
+        self.assertIn('"error_id" text(32) NOT NULL', migration)
+        self.assertIn("idx_knb_dataset_index_error_query", migration)
+        self.assertIn('"error_id" text(32) NOT NULL', fresh_install)
+        self.assertIn("idx_knb_dataset_index_error_query", fresh_install)
+        self.assertIn('"error_id" text(32) NOT NULL', upgrade_baseline)
+        self.assertIn("idx_knb_dataset_index_error_query", upgrade_baseline)
+
+
+if __name__ == "__main__":
+    unittest.main()

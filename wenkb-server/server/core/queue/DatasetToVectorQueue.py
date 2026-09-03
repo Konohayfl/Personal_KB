@@ -2,10 +2,12 @@ import queue
 import threading
 import time
 import traceback
+import uuid
 from logger import logger
 from server.core.tools.dataset_to_vector import start_to_build_dataset_index
 from server.db.DbManager import session_scope
 from server.model.orm_knb import Dataset, DatasetIndexError
+from sqlalchemy import delete
 
 # 数据集文档转为向量索引存储
 DATASET_TO_VECTOR_TASK_QUEUE = queue.Queue(maxsize=10)
@@ -25,6 +27,11 @@ def update_status(dtsetId:str, status:str, error: DatasetIndexError = None):
       return
     dt.idxSts = status # 构建索引中
     session.merge(dt)
+    if status != 'error':
+      session.execute(delete(DatasetIndexError).where(
+        DatasetIndexError.dtsetId == dtsetId,
+        DatasetIndexError.idxTyp == 'index'
+      ))
     if (error is not None):
       session.merge(error)
 
@@ -40,7 +47,17 @@ def consumer():
     except Exception as e:
       logger.info(f"Consume Failed {dataset['dtsetNm']}")
       traceback.print_exc()
-      update_status(dtsetId, 'error', DatasetIndexError(dtsetId=dtsetId, idxTyp='index', errInf=str(e))) # type: index, precis, qanswer, triplet
+      update_status(
+        dtsetId,
+        'error',
+        DatasetIndexError(
+          errorId=str(uuid.uuid4()).replace('-', ''),
+          dtsetId=dtsetId,
+          idxTyp='index',
+          errInf=str(e),
+          crtTm=time.strftime('%Y-%m-%d %H:%M:%S')
+        )
+      ) # type: index, precis, qanswer, triplet
     else:
       logger.info(f"Consumed {dataset['dtsetNm']}")
       # 修改状态

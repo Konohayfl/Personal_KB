@@ -7,15 +7,29 @@ from server.model.entity_knb import SrchInfo as SrchInfoEntity, SrchHist as Srch
 from datetime import datetime
 from server.core.tools.ask_to_llm import get_related_docs_by_repos_id
 from server.utils.websocketutils import WebsocketManager
+from server.exception.exception import BaseBusiException
+from server.core.knb.ReposService import ReposService
 
 class SearchApi(BaseApi):
+  reposService = ReposService()
   def __init__(self, app: FastAPI, manager: WebsocketManager):
     BaseApi.__init__(self)
+
+    def require_repository_access(reposId: str, request: Request, owner: bool = False):
+      repository = self.reposService.select_by_repos_id_and_user_id(
+        reposId, self.getUserId(request)
+      )
+      if repository is None:
+        raise BaseBusiException('知识库不存在或已被删除', status_code=404)
+      if owner and repository.optAuth != 'alter':
+        raise BaseBusiException('您没有权限修改该知识库', status_code=403)
+      return repository
   
     # 搜索
     @app.post('/knb/search')
     def search(srchInfo: SrchInfoEntity, request: Request):
       reposId = srchInfo.reposId
+      require_repository_access(reposId, request)
       if (not srchInfo.noHist):
         srchHist = SrchHistEntity(
           srchId = self.getPk(),
@@ -35,9 +49,8 @@ class SearchApi(BaseApi):
       # dtsetIds = set()
       for doc, score in related_docs_with_score:
         metadata = doc.metadata
-        if ('dtsetId' in metadata):
-          dtsetId = metadata['dtsetId']
-        elif ('source' in metadata):
+        dtsetId = metadata.get('dtsetId')
+        if (dtsetId is None and 'source' in metadata):
           source = metadata['source']
           dtsetId = (source.split('/')[-1]).split('.')[0]
         if (dtsetId is None):
@@ -47,15 +60,16 @@ class SearchApi(BaseApi):
           'srcId': dtsetId, # 来源文件ID
           'score': float(score),
           'content': doc.page_content,
-          'srcNm': metadata['dtsetNm'],
-          'srcTyp': metadata['fileTyp']
+          'srcNm': metadata.get('dtsetNm', ''),
+          'srcTyp': metadata.get('fileTyp', '')
         })
       return self.success(data)
     
     # 搜索历史查询
     @app.post('/knb/search/hist/list')
-    def searchHistList(srchHist: SrchHistEntity):
+    def searchHistList(srchHist: SrchHistEntity, request: Request):
       reposId = srchHist.reposId
+      require_repository_access(reposId, request)
       stmt = select(SrchHist).where(SrchHist.reposId == reposId).order_by(SrchHist.srchTm.desc()).limit(10)
       list = []
       with session_scope(True) as session:
@@ -67,6 +81,7 @@ class SearchApi(BaseApi):
     @app.post('/knb/search/hist/my/list')
     def searchHistList(srchHist: SrchHistEntity, request: Request):
       reposId = srchHist.reposId
+      require_repository_access(reposId, request)
       stmt = select(SrchHist).where(SrchHist.reposId == reposId, SrchHist.crtUser == self.getUserId(request)).order_by(SrchHist.srchTm.desc()).limit(10)
       list = []
       with session_scope(True) as session:
@@ -76,8 +91,14 @@ class SearchApi(BaseApi):
     
     # 移除搜索历史
     @app.delete('/knb/search/hist/{srchId}')
-    def searchHistRemove(srchId: str):
+    def searchHistRemove(srchId: str, request: Request):
       with session_scope() as session:
+        orm = session.get(SrchHist, srchId)
+        if (orm is None):
+          return self.success()
+        repository = require_repository_access(orm.reposId, request)
+        if orm.crtUser != self.getUserId(request) and repository.optAuth != 'alter':
+          raise BaseBusiException('您没有权限删除该搜索历史', status_code=403)
         stmt = delete(SrchHist).where(SrchHist.srchId == srchId)
         session.execute(stmt)
       return self.success()

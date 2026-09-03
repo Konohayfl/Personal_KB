@@ -2,10 +2,12 @@ import queue
 import threading
 import time
 import traceback
+import uuid
 from logger import logger
 from server.core.tools.dataset_to_enhance import start_dataset_to_enhance
 from server.db.DbManager import session_scope
 from server.model.orm_knb import Dataset, DatasetIndexError
+from sqlalchemy import delete
 
 # 数据集文档内容构建 摘要，Q&A，三元组等内容的索引
 # 数据集文档内容自动生成Q&A内容存储
@@ -36,14 +38,25 @@ def update_status(dtsetId:str, type: str, status:str, error: DatasetIndexError =
     elif (type == 'triplet'):
       dt.tpltSts = status
     session.merge(dt)
+    if status != 'error':
+      session.execute(delete(DatasetIndexError).where(
+        DatasetIndexError.dtsetId == dtsetId,
+        DatasetIndexError.idxTyp == type
+      ))
     if (error is not None):
       session.merge(error)
 
 # type: index, precis, qanswer, triplet
 def index_error(dtsetId:str, type: str, error: str):
   with session_scope() as session:
-    orm = DatasetIndexError(dtsetId=dtsetId, idxTyp=type, errInf=error)
-    session.merge(orm)
+    orm = DatasetIndexError(
+      errorId=str(uuid.uuid4()).replace('-', ''),
+      dtsetId=dtsetId,
+      idxTyp=type,
+      errInf=error,
+      crtTm=time.strftime('%Y-%m-%d %H:%M:%S')
+    )
+    session.add(orm)
 
 def consumer():
   while True:
@@ -58,7 +71,18 @@ def consumer():
     except Exception as e:
       logger.info(f"Consume Failed {dtsetId}-{type}")
       traceback.print_exc()
-      update_status(dtsetId, type, 'error', DatasetIndexError(dtsetId=dtsetId, idxTyp=type, errInf=str(e))) # type: index, precis, qanswer, triplet
+      update_status(
+        dtsetId,
+        type,
+        'error',
+        DatasetIndexError(
+          errorId=str(uuid.uuid4()).replace('-', ''),
+          dtsetId=dtsetId,
+          idxTyp=type,
+          errInf=str(e),
+          crtTm=time.strftime('%Y-%m-%d %H:%M:%S')
+        )
+      ) # type: index, precis, qanswer, triplet
     else:
       logger.info(f"Consumed {dtsetId}-{type}")
       # 修改状态

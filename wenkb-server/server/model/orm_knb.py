@@ -107,6 +107,24 @@ class ChatMesg(Base):
   crtUser = Column(String(32), name= 'crt_user')
   crtTm = Column(String, name= 'crt_tm')
 
+# 知识库会话消息引用
+class ChatMesgQuote(Base):
+  __tablename__ = 't_knb_chat_quote'
+  quoteId = Column(String(32), name='quote_id', primary_key=True)
+  mesgId = Column(String(32), name='mesg_id')
+  reposId = Column(String(32), name='repos_id')
+  dtsetId = Column(String(32), name='dtset_id')
+  chkId = Column(String(32), name='chk_id')
+  srcObjTyp = Column(String(20), name='src_obj_typ')
+  srcObjId = Column(String(32), name='src_obj_id')
+  dtsetNm = Column(String(200), name='dtset_nm')
+  fileNm = Column(String(200), name='file_nm')
+  fileTyp = Column(String(20), name='file_typ')
+  score = Column(Float, name='score')
+  content = Column(Text, name='content')
+  quoteOrder = Column(Integer, name='quote_order')
+  crtTm = Column(String, name='crt_tm')
+
 # 知识库搜索历史
 class SrchHist(Base):
   __tablename__ = 't_knb_srch_hist'
@@ -135,9 +153,11 @@ class DatasetTriplet(Base):
 class DatasetIndexError(Base):
   __tablename__ = 't_knb_dataset_index_error'
 	# 表的结构
-  dtsetId = Column(String(32), name='dtset_id', primary_key=True)
-  idxTyp = Column(String(10), name='idx_typ', primary_key=True)
+  errorId = Column(String(32), name='error_id', primary_key=True)
+  dtsetId = Column(String(32), name='dtset_id')
+  idxTyp = Column(String(10), name='idx_typ')
   errInf = Column(Text, name= 'err_inf')
+  crtTm = Column(String, name='crt_tm')
 
 # 知识库配置
 class ReposSetting(Base):

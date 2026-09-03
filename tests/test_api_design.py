@@ -28,6 +28,7 @@ class ApiDesignTest(unittest.TestCase):
             self.assertIn(item, text)
 
         required_paths = [
+            "/health",
             "/sys/model/prvd/list",
             "/sys/model/prvd/my/list",
             "/sys/model/prvd/param/list/{prvdId}",

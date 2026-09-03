@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from logger import logger
 from server.api.sys.FileApi import FileApi
 from server.api.sys.SettingApi import SettingApi
+from server.api.sys.HealthApi import HealthApi
 from server.api.knb.ReposInfoApi import ReposInfoApi
 from server.api.knb.DatasetApi import DatasetApi
 from server.api.knb.ChatApi import ChatApi
@@ -48,6 +49,7 @@ manager = WebsocketManager()
 
 FileApi(app)
 SettingApi(app)
+HealthApi(app)
 ReposInfoApi(app, manager)
 DatasetApi(app, manager)
 ChatApi(app, manager)

@@ -1,8 +1,8 @@
 # WenKB 代码维护交接记录
 
-版本：v0.1  
-日期：2026-09-02  
-状态：暂停维护，待下次继续
+版本：v0.2
+日期：2026-09-03
+状态：本轮维护已完成
 
 ## 1. 交接目的
 
@@ -59,25 +59,22 @@
 
 - 修复搜索结果元数据缺失时 `dtsetId` 可能未定义的问题。
 - 数据库版本号已调整为 `5`。
-- `ddl/0.sql`、`ddl/1.sql` 和 `ddl/4.sql` 已加入聊天引用表相关结构。
+- `ddl/0.sql`、`ddl/2.sql` 和 `ddl/5.sql` 已同步索引错误表的新主键结构与迁移脚本。
+
+### 2.7 访问控制与失败回落
+
+- 知识库、数据集、文档集、聊天和搜索的写接口已补充访问权限校验。
+- 查询列表接口已尽量收敛到当前用户可见范围。
+- `ask_to_llm_stream` 在生成中断时会回落到兜底消息，并将最终内容写回消息记录。
+- 新增对应的维护测试，覆盖数据库版本 5、迁移脚本和聊天失败回落。
 
 ## 3. 当前未完成事项
 
-以下事项在暂停前已确认，但没有继续实施：
-
-1. 新增 `wenkb-server/server/db/upgrade/ddl/5.sql`，把旧的联合主键索引错误表迁移为 `error_id` 主键，并补充 `(dtset_id, idx_typ, crt_tm)` 索引。
-2. 同步检查 `ddl/0.sql`、`ddl/1.sql`、`ddl/2.sql` 的索引错误表结构，使全新安装和升级安装一致。
-3. 修复 `ask_to_llm_stream` 在模型异常、历史整理异常或检索异常时提前返回的问题，确保助手消息保存最终错误或兜底内容。
-4. 为知识库名称、介绍、权限修改和相关问答接口补充拥有者或访问权限校验。
-5. 为数据集上传、编辑、删除、目录、分段、摘要、三元组和增强对象接口补充知识库访问或修改权限校验。
-6. 为文档集名称、描述、权限以及文档标题编辑接口补充拥有者校验。
-7. 为聊天查询、发送、修改、删除、清空和重新生成接口补充对话及知识库访问权限校验。
-8. 更新 `tests/test_code_maintenance.py` 中仍断言 `DB_SCHEMA_VERSION = 4` 的测试，并增加 `ddl/5.sql` 迁移检查。
-9. 完成上述代码后重新运行完整编译和测试，并检查数据库升级器在旧版本数据库上的实际迁移结果。
+暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
 
 ## 4. 当前工作区状态
 
-暂停时存在尚未提交的代码改动，涉及以下文件或目录：
+当前工作区存在尚未提交的代码改动，涉及以下文件或目录：
 
 - `wenkb-server/app.py`
 - `wenkb-server/config/common.py`
@@ -97,7 +94,9 @@
 - `wenkb-server/server/db/DbUpgrade.py`
 - `wenkb-server/server/db/upgrade/ddl/0.sql`
 - `wenkb-server/server/db/upgrade/ddl/1.sql`
+- `wenkb-server/server/db/upgrade/ddl/2.sql`
 - `wenkb-server/server/db/upgrade/ddl/4.sql`
+- `wenkb-server/server/db/upgrade/ddl/5.sql`
 - `wenkb-server/server/model/orm_knb.py`
 - `docs/api_design.md`
 - `tests/test_api_design.py`
@@ -114,16 +113,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-此前一次测试结果为 `Ran 16 tests - OK`。但该结果发生在数据库索引错误 ORM、数据库版本号和队列错误记录逻辑再次调整之前，因此不能作为当前工作区最终通过的依据。
-
-暂停前尚未重新完成以下验证：
-
-```powershell
-.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py
-.venv\Scripts\python.exe -m unittest discover -s tests
-```
-
-特别注意：当前 `tests/test_code_maintenance.py` 仍然检查版本号 `4`，而代码中的 `DB_SCHEMA_VERSION` 已为 `5`。在未更新测试和完成 `ddl/5.sql` 前，完整测试结果不应标记为通过。
+当前验证结果为 `Ran 17 tests - OK`。另外，测试运行时已经触发数据库升级器从版本 `4` 迁移到 `5`，并完成了 `ddl/5.sql` 的实际迁移执行。
 
 ## 6. 下次恢复建议
 
@@ -133,4 +123,3 @@
 4. 统一抽取或复用资源访问权限校验，逐组补充接口测试。
 5. 运行编译、完整测试和必要的 SQLite 升级验证。
 6. 检查差异后按仓库规则创建 Git commit。
-

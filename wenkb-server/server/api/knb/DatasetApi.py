@@ -3,7 +3,7 @@ from fastapi import FastAPI, File, UploadFile, Form, Request, Body
 from server.db.DbManager import session_scope
 from server.api.BaseApi import BaseApi
 from sqlalchemy import select, delete, update
-from server.model.orm_knb import Dataset, DatasetChunk, DatasetPrecis, DatasetCtlg, DatasetTriplet, DatasetIndexError
+from server.model.orm_knb import Dataset, DatasetChunk, DatasetPrecis, DatasetCtlg, DatasetTriplet, DatasetIndexError, ReposInfo
 from server.model.entity_base import PageBase
 from server.model.entity_knb import Dataset as DatasetEntity, DatasetChunk as DatasetChunkEntity, DatasetPrecis as DatasetPrecisEntity, DatasetCtlg as DatasetCtlgEntity, DatasetTriplet as DatasetTripletEntity
 from config.common import DATASET_UPLOAD_FILE_DIR
@@ -17,11 +17,39 @@ class DatasetApi(BaseApi):
   datasetService = DatasetService()
   def __init__(self, app: FastAPI, manager: WebsocketManager):
     BaseApi.__init__(self)
-    
+
+    def require_repository_access(reposId: str, request: Request, owner: bool = False):
+      userId = self.getUserId(request)
+      with session_scope(True) as session:
+        orm = session.get(ReposInfo, reposId)
+        if (orm is None):
+          raise BaseBusiException('知识库不存在或已被删除', status_code=404)
+        if (orm.crtUser != userId and orm.authRang != 'pblc'):
+          raise BaseBusiException('您没有权限访问该知识库', status_code=403)
+        if (owner and orm.crtUser != userId):
+          raise BaseBusiException('您没有权限修改该知识库', status_code=403)
+        return orm
+
+    def require_dataset_access(dtsetId: str, request: Request, owner: bool = False):
+      userId = self.getUserId(request)
+      with session_scope(True) as session:
+        orm = session.get(Dataset, dtsetId)
+        if (orm is None):
+          raise BaseBusiException('数据集不存在或已被删除', status_code=404)
+        repos = session.get(ReposInfo, orm.reposId)
+        if (repos is None):
+          raise BaseBusiException('知识库不存在或已被删除', status_code=404)
+        if (repos.crtUser != userId and repos.authRang != 'pblc'):
+          raise BaseBusiException('您没有权限访问该知识库', status_code=403)
+        if (owner and repos.crtUser != userId):
+          raise BaseBusiException('您没有权限修改该数据集', status_code=403)
+        return orm, repos
+
     # 查询数据集列表
     @app.post('/knb/dataset/list')
-    def datasetList(dataset: DatasetEntity):
+    def datasetList(dataset: DatasetEntity, request: Request):
       reposId = dataset.reposId
+      require_repository_access(reposId, request)
       stmt = select(Dataset).where(Dataset.reposId == reposId).order_by(Dataset.crtTm.desc())
       list = []
       with session_scope(True) as session:
@@ -30,13 +58,14 @@ class DatasetApi(BaseApi):
       return self.success(list)
     
     @app.post('/knb/dataset/page')
-    def datasetPage(dataset: DatasetEntity, pageBase: PageBase):
+    def datasetPage(dataset: DatasetEntity, pageBase: PageBase, request: Request):
       reposId = dataset.reposId
       dtsetNm = dataset.dtsetNm
       ctlgId = dataset.ctlgId
       hasCtlgId = ctlgId is not None and ctlgId != ''
       if (dtsetNm is None):
         dtsetNm = ''
+      require_repository_access(reposId, request)
       list = []
       with session_scope(True) as session:
         query = session.query(Dataset).where(Dataset.reposId == reposId, Dataset.dtsetNm.ilike(f'%{dtsetNm}%'))
@@ -58,6 +87,7 @@ class DatasetApi(BaseApi):
     @app.post('/knb/dataset/upload/document')
     async def uploadDocument(request: Request, file: UploadFile = File(...), reposId: str = Form(...), ctlgId: str = Form(None)):
       userId = self.getUserId(request)
+      require_repository_access(reposId, request, owner=True)
       # 将文件保存到本地再存储到数据集表中
       dtsetId = self.getPk()
       filename = file.filename
@@ -99,6 +129,7 @@ class DatasetApi(BaseApi):
     @app.post('/knb/dataset/upload/link')
     def uploadLink(request: Request, links: list[dict] = Body(...), reposId: str = Body(...), ctlgId: str = Body(None)):
       userId = self.getUserId(request)
+      require_repository_access(reposId, request, owner=True)
       if (links is None or len(links) == 0):
         raise BaseBusiException('链接列表不能为空')
       datasets = []
@@ -145,8 +176,9 @@ class DatasetApi(BaseApi):
 
     # 修改数据集启用状态
     @app.put('/knb/dataset/enable/status')
-    def editDatasetEnableStatus(dataset:DatasetEntity):
+    def editDatasetEnableStatus(dataset:DatasetEntity, request: Request):
       dtsetId = dataset.dtsetId
+      require_dataset_access(dtsetId, request, owner=True)
       with session_scope() as session:
         orm = session.get(Dataset, dtsetId)
         orm.enbSts = dataset.enbSts
@@ -155,10 +187,11 @@ class DatasetApi(BaseApi):
     
      # 修改数据集其他索引构建状态
     @app.put('/knb/dataset/build/status')
-    def editDatasetEnableStatus(form: dict):
+    def editDatasetEnableStatus(form: dict, request: Request):
       dtsetId = form.get('dtsetId', None)
       if (dtsetId is None or dtsetId == ''):
         raise BaseBusiException('数据集ID不能为空')
+      require_dataset_access(dtsetId, request, owner=True)
       with session_scope() as session:
         orm = session.get(Dataset, dtsetId)
         orm_dic = orm.to_dict()
@@ -169,9 +202,10 @@ class DatasetApi(BaseApi):
     
     # 分页查询数据集分段的内容
     @app.post('/knb/dataset/chunk/page')
-    def datasetChunkPage(datasetChunk: DatasetChunkEntity, pageBase: PageBase):
+    def datasetChunkPage(datasetChunk: DatasetChunkEntity, pageBase: PageBase, request: Request):
       dtsetId = datasetChunk.dtsetId
       chkCntnt = datasetChunk.chkCntnt
+      require_dataset_access(dtsetId, request)
       list = []
       with session_scope(True) as session:
         query = session.query(DatasetChunk).where(DatasetChunk.dtsetId == dtsetId)
@@ -187,21 +221,28 @@ class DatasetApi(BaseApi):
     
     # 修改分段内容
     @app.put('/knb/dataset/chunk/content')
-    def editDatasetChunkContent(datasetChunk: DatasetChunkEntity):
+    def editDatasetChunkContent(datasetChunk: DatasetChunkEntity, request: Request):
+      require_dataset_access(datasetChunk.dtsetId, request, owner=True)
       self.datasetService.modifyChunkContent(datasetChunk=datasetChunk)
       # 除了修改数据库还需要修改向量库
       return self.success()
     
     # 删除分段
     @app.delete('/knb/dataset/chunk/{chkId}')
-    def repositoryRemoveChunk(chkId: str):
+    def repositoryRemoveChunk(chkId: str, request: Request):
+      with session_scope(True) as session:
+        orm = session.get(DatasetChunk, chkId)
+        if (orm is None):
+          return self.success()
+        require_dataset_access(orm.dtsetId, request, owner=True)
       self.datasetService.removeChunkById(chkId)
       return self.success()
     
     # 修改数据集基本信息 仅修改中文名称与所在目录
     @app.put('/knb/dataset')
-    def editDataset(dataset:DatasetEntity):
+    def editDataset(dataset:DatasetEntity, request: Request):
       dtsetId = dataset.dtsetId
+      require_dataset_access(dtsetId, request, owner=True)
       with session_scope() as session:
         orm = session.get(Dataset, dtsetId)
         orm.dtsetNm = dataset.dtsetNm
@@ -211,21 +252,24 @@ class DatasetApi(BaseApi):
 
     # 删除知识库 需要删除对应的索引库
     @app.delete('/knb/dataset/{id}')
-    def removeDataset(id:str):
+    def removeDataset(id:str, request: Request):
+      require_dataset_access(id, request, owner=True)
       self.datasetService.removeDatasetById(id)
       return self.success()
 
     # 重建数据集索引库
     @app.post('/knb/dataset/reindex/{id}')
-    def reindexDataset(id:str, types:list[str] = Body(...)):
+    def reindexDataset(id:str, request: Request, types:list[str] = Body(...)):
+      require_dataset_access(id, request, owner=True)
       self.datasetService.reindexDatasetByIdAndTypes(id, types)
       return self.success()
     
     # 分页查询数据集摘要的内容
     @app.post('/knb/dataset/precis/page')
-    def datasetPrecisPage(datasetPrecis: DatasetPrecisEntity, pageBase: PageBase):
+    def datasetPrecisPage(datasetPrecis: DatasetPrecisEntity, pageBase: PageBase, request: Request):
       dtsetId = datasetPrecis.dtsetId
       prcsCntnt = datasetPrecis.prcsCntnt
+      require_dataset_access(dtsetId, request)
       list = []
       with session_scope(True) as session:
         query = session.query(DatasetPrecis).where(DatasetPrecis.dtsetId == dtsetId)
@@ -241,26 +285,34 @@ class DatasetApi(BaseApi):
     
     # 新增摘要
     @app.post('/knb/dataset/precis')
-    def addDatasetPrecis(datasetPrecis: DatasetPrecisEntity):
+    def addDatasetPrecis(datasetPrecis: DatasetPrecisEntity, request: Request):
+      require_dataset_access(datasetPrecis.dtsetId, request, owner=True)
       return self.success(self.datasetService.addPrecis(datasetPrecis=datasetPrecis))
 
     # 修改摘要
     @app.put('/knb/dataset/precis/content')
-    def editDatasetPrecisContent(datasetPrecis: DatasetPrecisEntity):
+    def editDatasetPrecisContent(datasetPrecis: DatasetPrecisEntity, request: Request):
+      require_dataset_access(datasetPrecis.dtsetId, request, owner=True)
       self.datasetService.modifyPrecisContent(datasetPrecis=datasetPrecis)
       # 除了修改数据库还需要修改向量库
       return self.success()
     
     # 删除摘要
     @app.delete('/knb/dataset/precis/{prcsId}')
-    def repositoryRemovePrecis(prcsId: str):
+    def repositoryRemovePrecis(prcsId: str, request: Request):
+      with session_scope(True) as session:
+        orm = session.get(DatasetPrecis, prcsId)
+        if (orm is None):
+          return self.success()
+        require_dataset_access(orm.dtsetId, request, owner=True)
       self.datasetService.removePrecisById(prcsId)
       return self.success()
     
     # 查询目录列表
     @app.post('/knb/dataset/catalog/list')
-    def catalogList(catasetCtlg: DatasetCtlgEntity):
+    def catalogList(catasetCtlg: DatasetCtlgEntity, request: Request):
       reposId = catasetCtlg.reposId
+      require_repository_access(reposId, request)
       stmt = select(DatasetCtlg).where(DatasetCtlg.reposId == reposId).order_by(DatasetCtlg.ctlgOdr.asc())
       list = []
       with session_scope(True) as session:
@@ -272,6 +324,7 @@ class DatasetApi(BaseApi):
     @app.post('/knb/dataset/catalog')
     def addCatalog(catasetCtlg: DatasetCtlgEntity, request: Request):
       catasetCtlg.ctlgId = self.getPk()
+      require_repository_access(catasetCtlg.reposId, request, owner=True)
       with session_scope() as session:
         ctlgPid = catasetCtlg.ctlgPid
         ctlgPath = '/' + catasetCtlg.ctlgId
@@ -289,19 +342,22 @@ class DatasetApi(BaseApi):
     
     # 修改目录
     @app.put('/knb/dataset/catalog')
-    def editCatalog(catasetCtlg: DatasetCtlgEntity):
+    def editCatalog(catasetCtlg: DatasetCtlgEntity, request: Request):
       ctlgId = catasetCtlg.ctlgId
       with session_scope() as session:
         orm = session.get(DatasetCtlg, ctlgId)
         if (orm is None):
           raise BaseBusiException('目录不存在或被删除')
+        require_repository_access(orm.reposId, request, owner=True)
         orm.copy_from_dict(vars(catasetCtlg))
         session.merge(orm)
       return self.success()
 
     # 修改数据集目录顺序
     @app.put('/knb/dataset/catalog/sort')
-    def editCatalogOrder(list: List[DatasetCtlgEntity]):
+    def editCatalogOrder(list: List[DatasetCtlgEntity], request: Request):
+      if (len(list) > 0):
+        require_repository_access(list[0].reposId, request, owner=True)
       with session_scope() as session:
         for entity in list:
           ctlgId = entity.ctlgId
@@ -312,11 +368,12 @@ class DatasetApi(BaseApi):
 
     # 删除目录
     @app.delete('/knb/dataset/catalog/{id}')
-    def removeCatalog(id):
+    def removeCatalog(id, request: Request):
       with session_scope() as session:
         orm = session.get(DatasetCtlg, id)
         if (orm is None):
           return self.success()
+        require_repository_access(orm.reposId, request, owner=True)
         ctlgPath = orm.ctlgPath
         ctlgList = session.query(DatasetCtlg).filter(DatasetCtlg.ctlgPath.like(f'{ctlgPath}%')).add_columns(DatasetCtlg.ctlgId).all()
         ctlgIdList = [ctlg.ctlgId for ctlg in ctlgList]
@@ -329,11 +386,12 @@ class DatasetApi(BaseApi):
     
     # 分页查询数据集三元组的内容
     @app.post('/knb/dataset/triplet/page')
-    def datasetTripletPage(datasetTriplet: DatasetTripletEntity, pageBase: PageBase):
+    def datasetTripletPage(datasetTriplet: DatasetTripletEntity, pageBase: PageBase, request: Request):
       dtsetId = datasetTriplet.dtsetId
       subject = datasetTriplet.tpltSbjct
       predicate = datasetTriplet.tpltPrdct
       object = datasetTriplet.tpltObjct
+      require_dataset_access(dtsetId, request)
       list = []
       with session_scope(True) as session:
         query = session.query(DatasetTriplet).where(DatasetTriplet.dtsetId == dtsetId)
@@ -354,32 +412,44 @@ class DatasetApi(BaseApi):
       return self.sucess_page(data=list, total=total, size=pageBase.pageSize, page=pageBase.pageNum)
 
     @app.get('/knb/dataset/triplet/{dtsetId}')    
-    def datasetTripletAll(dtsetId: str):
+    def datasetTripletAll(dtsetId: str, request: Request):
+      require_dataset_access(dtsetId, request)
       with session_scope(True) as session:
         list = session.query(DatasetTriplet).filter(DatasetTriplet.dtsetId == dtsetId).all()
         return self.success(list)
 
     # 新增三元组
     @app.post('/knb/dataset/triplet')
-    def addDatasetTriplet(datasetTriplet: DatasetTripletEntity):
+    def addDatasetTriplet(datasetTriplet: DatasetTripletEntity, request: Request):
+      require_dataset_access(datasetTriplet.dtsetId, request, owner=True)
       return self.success(self.datasetService.addTriplet(datasetTriplet=datasetTriplet))
     
     # 修改摘要
     @app.put('/knb/dataset/triplet')
-    def editDatasetTriplet(datasetTriplet: DatasetTripletEntity):
+    def editDatasetTriplet(datasetTriplet: DatasetTripletEntity, request: Request):
+      require_dataset_access(datasetTriplet.dtsetId, request, owner=True)
       self.datasetService.modifyTriplet(datasetTriplet=datasetTriplet)
       # 除了修改数据库还需要修改向量库
       return self.success()
 
     # 删除三元组
     @app.delete('/knb/dataset/triplet/{tpltId}')
-    def removeDatasetTriplet(tpltId: str):
+    def removeDatasetTriplet(tpltId: str, request: Request):
+      with session_scope(True) as session:
+        orm = session.get(DatasetTriplet, tpltId)
+        if (orm is None):
+          return self.success()
+        require_dataset_access(orm.dtsetId, request, owner=True)
       self.datasetService.removeTripletById(tpltId)
       return self.success()
     
     # 获取错误信息
     @app.get('/knb/dataset/index/error/{dtsetId}/{idxTyp}')
-    def datasetIndexError(dtsetId: str, idxTyp: str):
+    def datasetIndexError(dtsetId: str, idxTyp: str, request: Request):
+      require_dataset_access(dtsetId, request)
       with session_scope(True) as session:
-        orm = session.query(DatasetIndexError).filter(DatasetIndexError.dtsetId == dtsetId, DatasetIndexError.idxTyp == idxTyp).one_or_none()
+        orm = session.query(DatasetIndexError).filter(
+          DatasetIndexError.dtsetId == dtsetId,
+          DatasetIndexError.idxTyp == idxTyp
+        ).order_by(DatasetIndexError.crtTm.desc()).first()
         return self.success(orm)

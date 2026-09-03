@@ -48,7 +48,7 @@ def upgrade_db():
 # 遍历文件夹下的sql文件，并获取文件内容
 def get_sql_scripts(dir_path:str, current_version:int, target_version:int):
   paths = []
-  for file in os.listdir(dir_path): # 还需要按文件名排序，暂时没做
+  for file in sorted(os.listdir(dir_path)):
     if (not file.endswith('.sql')):
       continue
     name = file.split('.')[0]
@@ -62,7 +62,10 @@ def get_sql_scripts(dir_path:str, current_version:int, target_version:int):
       if (name > current_version and name <= target_version): # 版本不符合要求
         paths.append(os.path.join(dir_path, file))
   # 获取文件的内容
-  contents = [open(path, 'r', encoding='utf-8').read() for path in paths]
+  contents = []
+  for path in paths:
+    with open(path, 'r', encoding='utf-8') as file:
+      contents.append(file.read())
   scripts = [] # 需要执行的脚本
   for content in contents:
     for line in content.split(';'): # 按分号分割，暂时不支持多行sql以及其他情况

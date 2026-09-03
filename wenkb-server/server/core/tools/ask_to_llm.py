@@ -1,11 +1,13 @@
 import json
+import uuid
 from logger import logger
 from config.llm import TOP_K
 from config.prompt import REPOSCHAT_PROMPT_TEMPLATE, REPOSHISTORY_PROMPT_TEMPLATE
 from server.core.tools.repos_vector_db import get_or_build_vector_db
 from server.utils.websocketutils import WebsocketManager
 from server.model.entity_knb import ChatMesg as ChatMesgEntity, ChatMesgQuote as ChatMesgQuoteEntity, ReposSetting as ReposSettingEntity
-from server.model.orm_knb import ChatMesg
+from server.model.orm_knb import ChatMesg, ChatMesgQuote
+from sqlalchemy import delete
 from server.db.DbManager import session_scope
 from datetime import datetime
 from server.core.tools.llm_client_tools import get_user_llm_client
@@ -14,16 +16,59 @@ def prob_related_documents_and_score(related_docs_with_score):
   sources = []
   for doc, score in related_docs_with_score:
     metadata = doc.metadata
+    if 'chkId' in metadata:
+      source_type = 'chunk'
+      source_id = metadata['chkId']
+    elif 'prcsId' in metadata:
+      source_type = 'summary'
+      source_id = metadata['prcsId']
+    elif 'qstId' in metadata:
+      source_type = 'qa'
+      source_id = metadata['qstId']
+    elif 'tpltId' in metadata:
+      source_type = 'triplet'
+      source_id = metadata['tpltId']
+    else:
+      source_type = 'unknown'
+      source_id = None
     sources.append({
       'dtsetId': metadata['dtsetId'],
       'dtsetNm': metadata['dtsetNm'],
       'fileNm': metadata['fileNm'],
       'fileTyp': metadata['fileTyp'],
       'score': score,
-      'content': doc.page_content
+      'content': doc.page_content,
+      'sourceObjectType': source_type,
+      'sourceObjectId': source_id,
+      'chkId': metadata.get('chkId')
     })
     # print('%s [%s]: %s' % (doc.metadata['source'], score, doc.page_content))
   return sources
+
+def save_message_quotes(chatMesg: ChatMesgEntity, sources: list):
+  sources = sources or []
+  now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  with session_scope() as session:
+    session.execute(delete(ChatMesgQuote).where(ChatMesgQuote.mesgId == chatMesg.mesgId))
+    session.add_all([
+      ChatMesgQuote(
+        quoteId=str(uuid.uuid4()).replace('-', ''),
+        mesgId=chatMesg.mesgId,
+        reposId=chatMesg.reposId,
+        dtsetId=source.get('dtsetId'),
+        chkId=source.get('chkId'),
+        srcObjTyp=source.get('sourceObjectType', 'unknown'),
+        srcObjId=source.get('sourceObjectId'),
+        dtsetNm=source.get('dtsetNm'),
+        fileNm=source.get('fileNm'),
+        fileTyp=source.get('fileTyp'),
+        score=float(source['score']) if source.get('score') is not None else None,
+        content=source.get('content') or '',
+        quoteOrder=index,
+        crtTm=now
+      )
+      for index, source in enumerate(sources)
+    ])
 
 def get_related_docs_by_repos_id(reposId:str, question:str, setting: ReposSettingEntity = ReposSettingEntity()):
   vector_store = get_or_build_vector_db(reposId)
@@ -53,6 +98,8 @@ def get_question_prompts_and_sources(reposId: str, question: str, setting: Repos
 
 # 发送引用数据
 async def send_ws_quote_message(chatMesg:ChatMesgEntity, sources:list, manager: WebsocketManager, token: str = None):
+  sources = sources or []
+  save_message_quotes(chatMesg=chatMesg, sources=sources)
   mesgId = chatMesg.mesgId
   reposId = chatMesg.reposId
   chatId = chatMesg.chatId
@@ -84,16 +131,17 @@ async def send_ws_chunk_message(chatMesg: ChatMesgEntity, chunk: str, manager: W
     await manager.send_message_to_client_id(message=message, client_id=token)
   return message
 
-def ask_to_llm_stream(setting: ReposSettingEntity, chatMesg: ChatMesgEntity, question: str, userId: str, chatHistory: list[ChatMesgEntity] = []):
+def ask_to_llm_stream(setting: ReposSettingEntity, chatMesg: ChatMesgEntity, question: str, userId: str, chatHistory: list[ChatMesgEntity] = None):
+  chatHistory = chatHistory or []
+  fallback_message = '很抱歉，似乎发生了错误'
   client = None
   try:
     client = get_user_llm_client(userId=userId, temperature=setting.llmTptur)
   except Exception as e:
     logger.error(e)
     yield message_error_to_json(str(e))
-    message = '很抱歉，似乎发生了错误'
-    yield message_chunk_to_json(message)
-    return message
+    yield message_chunk_to_json(fallback_message)
+    return fallback_message
   if (len(chatHistory) > 0):
     chatHistory = chatHistory[:setting.maxHist]
     history = []
@@ -115,18 +163,16 @@ def ask_to_llm_stream(setting: ReposSettingEntity, chatMesg: ChatMesgEntity, que
     except Exception as e:
       logger.error(e)
       yield message_error_to_json(str(e))
-      message = '很抱歉，似乎发生了错误'
-      yield message_chunk_to_json(message)
-      return message
+      yield message_chunk_to_json(fallback_message)
+      return fallback_message
   prompts, sources = None, None
   try:
     prompts, sources = get_question_prompts_and_sources(chatMesg.reposId, question, setting)
   except Exception as e:
     logger.error(e)
     yield message_error_to_json(str(e))
-    message = '很抱歉，似乎发生了错误'
-    yield message_chunk_to_json(message)
-    return message
+    yield message_chunk_to_json(fallback_message)
+    return fallback_message
   message = ''
   if (prompts is None):
     message = '很抱歉，无法回答该问题'
@@ -141,6 +187,10 @@ def ask_to_llm_stream(setting: ReposSettingEntity, chatMesg: ChatMesgEntity, que
     except Exception as e:
       logger.error(e)
       yield message_error_to_json(str(e))
+      message = fallback_message
+      yield message_chunk_to_json(message)
+  sources = sources or []
+  save_message_quotes(chatMesg=chatMesg, sources=sources)
   yield message_quote_to_json(mesgId=chatMesg.mesgId, chatId=chatMesg.chatId, reposId=chatMesg.reposId, quotes=sources)
   mesgId = chatMesg.mesgId
   with session_scope() as session:

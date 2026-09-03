@@ -2,9 +2,17 @@ import json
 import uuid
 from server.db.DbManager import session_scope
 from langchain_core.documents import Document
-from server.model.orm_knb import ReposInfo, ReposQuest, Dataset, ReposSetting
+from sqlalchemy import delete, select
+from server.model.orm_knb import (
+  ReposInfo, ReposQuest, Dataset, DatasetCtlg, DatasetChunk,
+  DatasetPrecis, DatasetTriplet, DatasetIndexError, ChatInfo,
+  ChatMesg, ChatMesgQuote, SrchHist, ReposSetting
+)
 from server.model.entity_knb import ReposInfo as ReposInfoEntity, ReposQuest as ReposQuestEntity, ReposSetting as ReposSettingEntity
-from server.core.tools.repos_vector_db import vector_get, vector_update_document, vector_delete, vector_add_texts
+from server.core.tools.repos_vector_db import (
+  vector_get, vector_update_document, vector_delete, vector_add_texts,
+  vector_delete_collection
+)
 from server.core.tools.dataset_to_metadata import quest_to_metadata
 
 class ReposService():
@@ -18,14 +26,51 @@ class ReposService():
   # 根据知识库id与用户id查询知识库信息，带权限的信息
   def select_by_repos_id_and_user_id(self, reposId:str, userId:str):
     with session_scope() as session:
-      orm = session.get(ReposInfo, reposId)
+      orm = session.query(ReposInfo).where(
+        ReposInfo.reposId == reposId,
+        (ReposInfo.crtUser == userId) | (ReposInfo.authRang == 'pblc')
+      ).first()
       if orm is None: return None
       reposInfo = ReposInfoEntity().copy_from_dict(orm.to_dict())
-      reposInfo.optAuth = 'alter'
+      reposInfo.optAuth = 'alter' if orm.crtUser == userId else 'visit'
       return reposInfo
   # 查询用户的知识库列表
   def select_list_by_user_id(self, userId:str):
-    return []
+    with session_scope(True) as session:
+      orms = session.query(ReposInfo).where(
+        (ReposInfo.crtUser == userId) | (ReposInfo.authRang == 'pblc')
+      ).order_by(ReposInfo.crtTm.desc()).all()
+      result = []
+      for orm in orms:
+        entity = ReposInfoEntity().copy_from_dict(orm.to_dict())
+        entity.optAuth = 'alter' if orm.crtUser == userId else 'visit'
+        result.append(entity)
+      return result
+
+  def remove_repository_by_id(self, reposId: str):
+    # 先删除向量集合，失败时保留关系库数据，方便整体重试。
+    vector_delete_collection(reposId)
+    with session_scope() as session:
+      repository = session.get(ReposInfo, reposId)
+      if repository is None:
+        return
+      session.execute(delete(ChatMesgQuote).where(ChatMesgQuote.reposId == reposId))
+      session.execute(delete(ChatMesg).where(ChatMesg.reposId == reposId))
+      session.execute(delete(ChatInfo).where(ChatInfo.reposId == reposId))
+      session.execute(delete(SrchHist).where(SrchHist.reposId == reposId))
+      session.execute(delete(ReposQuest).where(ReposQuest.reposId == reposId))
+      dataset_ids = session.scalars(
+        select(Dataset.dtsetId).where(Dataset.reposId == reposId)
+      ).all()
+      if dataset_ids:
+        session.execute(delete(DatasetIndexError).where(DatasetIndexError.dtsetId.in_(dataset_ids)))
+        session.execute(delete(DatasetChunk).where(DatasetChunk.dtsetId.in_(dataset_ids)))
+        session.execute(delete(DatasetPrecis).where(DatasetPrecis.dtsetId.in_(dataset_ids)))
+        session.execute(delete(DatasetTriplet).where(DatasetTriplet.dtsetId.in_(dataset_ids)))
+      session.execute(delete(Dataset).where(Dataset.reposId == reposId))
+      session.execute(delete(DatasetCtlg).where(DatasetCtlg.reposId == reposId))
+      session.execute(delete(ReposSetting).where(ReposSetting.reposId == reposId))
+      session.delete(repository)
   
   def add_repos_quest(self, reposQuest: ReposQuestEntity):
     reposQuest.qstId = str(uuid.uuid4()).replace('-', '')
