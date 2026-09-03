@@ -1,203 +1,312 @@
-# WenKB 操作文档与代码运行流程
+# WenKB 开发者手册与用户手册
 
-## 1. 总体流程
+版本：v0.2  
+日期：2026-09-03  
+范围：本文覆盖原操作流程文档内容，统一整理为开发者手册和用户手册。开发者部分用于本地开发、调试、测试和维护交接；用户部分用于指导普通用户完成模型配置、知识库导入、问答、搜索和常见问题处理。
 
-WenKB 的主链路可以概括为：
+## 第一部分：开发者手册
 
-`启动后端 -> 初始化数据库 -> 启动索引队列 -> 配置大模型 -> 创建知识库 -> 导入文档/链接 -> 构建向量索引 -> 在聊天页检索问答`
+## 1. 开发者手册目的
 
-后端实际启动入口在 [app.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/app.py:80>)，代码里默认监听端口是 `16088`。
+开发者手册用于帮助后续维护人员快速理解 WenKB 的本地运行方式、核心目录、启动链路、数据落点、后台任务、验证方法和维护规则。
 
-## 2. 代码运行流程
+本手册不替代需求分析、概要设计、详细设计、数据库设计、接口设计、测试计划和部署运维文档；涉及需求边界、数据模型和部署策略时，应优先参考对应阶段文档。
 
-1. 启动时先执行数据库升级，然后在 lifespan 中启动两个后台任务：
-   - 文档切分与向量化任务
-   - 摘要 / Q&A / 三元组增强任务
+## 2. 项目运行形态
 
-2. 定时任务每 30 秒扫描一次待处理数据集：
-   - `idxSts = new && enbSts = enb` 的数据集进入主索引队列
-   - `prcsSts / qaSts / tpltSts = new` 的数据集进入增强队列
+WenKB 当前主要采用本地单机运行形态：
 
-3. 主索引任务会：
-   - 读取文件或网页内容
-   - 按文本类型切分成 chunk
-   - 写入数据库
-   - 写入 Chroma 向量库
+- 前端与后端默认运行在同一台电脑。
+- 后端默认监听 `16088` 端口。
+- 业务数据默认保存到本地 SQLite 数据库。
+- 文件、文档和向量库数据默认保存到 `resources` 目录。
+- 后台任务在服务启动后随进程运行。
 
-4. 问答任务会：
-   - 根据知识库 ID 读取向量库
-   - 按相似度检索相关片段
-   - 拼接提示词
-   - 调用用户选择的大模型流式返回答案
+当前形态适合个人知识库、课程实习、功能验证和本地二次开发。若要扩展到局域网部署，应参考部署运维文档中关于身份、权限、共享存储和任务调度的改造建议。
 
-对应代码：
-- [app.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/app.py:1>)
-- [Scheduler.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/scheduler/Scheduler.py:11>)
-- [DatasetToVectorQueue.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/queue/DatasetToVectorQueue.py:1>)
-- [DatasetEnhanceVectorQueue.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/queue/DatasetEnhanceVectorQueue.py:1>)
-- [dataset_to_vector.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/dataset_to_vector.py:1>)
-- [ask_to_llm.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/ask_to_llm.py:1>)
+## 3. 本地目录说明
 
-## 3. 如何导入大模型
+| 目录或文件 | 作用 |
+|---|---|
+| `wenkb-server` | 后端服务、数据库脚本、模型资源和文件资源 |
+| `wenkb-client` | 前端页面与桌面端工程 |
+| `docs` | 软件工程阶段文档与维护文档 |
+| `tests` | 文档测试、启动测试和维护测试 |
+| `resources/database/wenkb.db` | 默认 SQLite 数据库文件 |
+| `resources/static/upload` | 默认上传文件目录 |
+| `resources/documents` | 数据集文档资源目录 |
+| `resources/vector_store` | 向量库持久化目录 |
 
-这里的“大模型”主要指聊天时使用的 LLM。
+开发和运维时应重点保护数据库、上传文件、文档资源和向量库目录。恢复数据时，数据库和向量库必须保持同一批次，否则可能出现检索结果与业务数据不一致。
 
-### 3.1 配置供应商
+## 4. 启动流程
 
-进入前端 `设置 -> 模型设置`，也就是 `/main/setting` 页面中的“模型设置”区域。
+开发环境的主流程如下：
 
-操作步骤：
+1. 准备 Python 依赖和前端依赖。
+2. 启动后端服务。
+3. 后端执行数据库版本检查与升级。
+4. 后端启动主索引队列和增强索引队列。
+5. 启动前端页面或桌面端入口。
+6. 配置模型供应商和默认 LLM。
+7. 创建知识库并导入数据集。
+8. 启用数据集并等待索引完成。
+9. 进入聊天页进行知识库问答。
 
-1. 在“未设置模型”里找到目标供应商。
-2. 点击“设置”，填写该供应商需要的参数，例如：
-   - `api_key`
-   - `base_url`
-3. 如果供应商没有现成模型，点击“添加模型”补一个模型条目。
+启动后应先访问 `/health` 做健康检查，再进入业务页面验证模型、知识库和聊天入口是否可用。
 
-后端对应接口：
-- `GET /sys/model/prvd/list`
-- `POST /sys/model/param/prvd/{prvdId}`
-- `POST /sys/model/prvd/modl/{prvdId}`
+## 5. 后台任务
 
-### 3.2 选择默认聊天模型
+WenKB 的后台任务主要负责数据集索引和知识增强：
 
-在“模型首选项”里选择 `LLM`。
-这一步会写入用户的模型偏好，聊天时会优先使用这里的模型。
+- 主索引任务：扫描已启用且待索引的数据集，将文档或网页内容切分并写入向量库。
+- 增强任务：扫描待处理的摘要、Q&A 和三元组任务，调用模型生成结构化知识并同步到向量库。
 
-后端对应接口：
-- `POST /sys/setting/user`
+常见状态包括：
 
-模型实际创建逻辑在：
-- [SettingApi.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/api/sys/SettingApi.py:36>)
-- [ModelPreference.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/setting/llm/ModelPreference.vue:27>)
+| 状态字段 | 常见值 | 含义 |
+|---|---|---|
+| `enbSts` | `enb` / `une` | 数据集是否启用 |
+| `idxSts` | `new` / `order` / `index` / `ready` / `error` | 主索引状态 |
+| `prcsSts` | `nobd` / `new` / `order` / `index` / `ready` / `error` | 摘要状态 |
+| `qaSts` | `nobd` / `new` / `order` / `index` / `ready` / `error` | Q&A 状态 |
+| `tpltSts` | `nobd` / `new` / `order` / `index` / `ready` / `error` | 三元组状态 |
 
-### 3.3 常见模型类型
+排查索引问题时，应先确认数据集是否已启用，再确认索引状态是否进入 `ready`，最后检查错误记录和后台任务日志。
 
-- OpenAI / DeepSeek / Moonshot / 通义 / 智谱：通常配置 `api_key`
-- Ollama：通常配置 `base_url`
-- 默认本地 embedding：`default/m3e-small`
+## 6. 数据与配置维护
 
-## 4. 如何导入知识库
+### 6.1 数据库
 
-知识库由“知识库本体 + 数据集 + 向量索引”组成。
+当前默认数据库是 SQLite 文件，保存位置为 `resources/database/wenkb.db`。启动时会检查数据库版本并执行迁移脚本。
 
-### 4.1 新建知识库
+维护建议：
 
-进入 `/main/repository` 页面，点击“新建”：
+- 升级前必须备份数据库文件。
+- 数据库升级失败后不要继续写入业务数据。
+- 若数据库和向量库不一致，应以数据库为准重新构建索引。
 
-1. 填写知识库名称。
-2. 选择“索引”模型，也就是 embedding 模型。
-3. 填写介绍。
+### 6.2 文件资源
 
-默认索引模型是 `default/m3e-small`。
-创建后一般不建议随意更改索引模型，因为已经构建好的向量库会和新模型不匹配。
+上传文件、文档资源和向量库数据均在本地目录中持久化。
 
-对应代码：
-- [RepositoryForm.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/repository/form/RepositoryForm.vue:15>)
-- [ReposInfoApi.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/api/knb/ReposInfoApi.py:81>)
-- [llm_client_tools.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/llm_client_tools.py:73>)
+维护建议：
 
-### 4.2 配置知识库参数
+- 定期备份 `resources/static/upload`、`resources/documents` 和 `resources/vector_store`。
+- 删除知识库或数据集后，应确认关联文件和向量数据已同步清理。
+- 移动项目目录后，应重新检查资源路径是否可读写。
 
-进入知识库详情页 `/main/repository/detail?id=...`，切到“设置”：
+### 6.3 模型配置
 
-- `maxCtx`：每次送给大模型的上下文片段数
-- `maxHist`：保留的历史对话轮数
-- `llmTptur`：回答温度
-- `smlrTrval`：相似度阈值
-- `topK`：检索条数上限
+模型供应商参数、模型清单和默认模型选择会影响问答、增强和索引流程。
 
-对应页面：
-- [RepositorySetting.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/repository/setting/RepositorySetting.vue:1>)
+维护建议：
 
-### 4.3 导入文档
+- API Key 等敏感参数应通过界面配置，不应写入文档。
+- 默认 LLM 缺失时，聊天和增强生成会无法正常进行。
+- 已构建索引的知识库不应随意切换 embedding 模型。
 
-在知识库详情页的“数据集”页：
+## 7. 开发验证
 
-1. 点击“创建 -> 导入文档”。
-2. 选择文件上传，支持 `PDF / DOCX / TXT / PPT / PPTX / MD`。
-3. 上传后数据集记录会进入 `idxSts = new`。
+每次变更后应执行完整验证：
 
-后端会保存原文件，再由后台队列自动切分并构建索引。
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests
+```
 
-注意：
-- 扫描版 PDF 不支持
-- 文档上传后默认 `enbSts = une`，需要启用后队列才会处理
+若修改后端代码，还应执行编译检查：
 
-对应代码：
-- [DocumentImportForm.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/repository/form/DocumentImportForm.vue:4>)
-- [DatasetApi.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/api/knb/DatasetApi.py:58>)
+```powershell
+.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py
+```
 
-### 4.4 导入网页链接
+交付前应确认：
 
-在“创建”菜单里选“网页链接”：
+- 自动化测试全部通过。
+- 文档导航与实际文档一致。
+- 维护交接记录已经更新。
+- 已创建对应 Git commit。
 
-1. 每行输入一个 URL。
-2. 系统会自动抓取网页标题。
-3. 保存后数据集会直接启用，等待后台任务构建索引。
+## 8. 开发者常见排查
 
-对应代码：
-- [LinkImportForm.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/repository/form/LinkImportForm.vue:4>)
-- [DatasetApi.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/api/knb/DatasetApi.py:99>)
+### 8.1 服务无法启动
 
-### 4.5 触发增强索引
+- 检查端口 `16088` 是否被占用。
+- 检查数据库目录是否可写。
+- 检查依赖是否安装完整。
+- 检查数据库升级日志。
 
-主索引 ready 之后，可以在数据集列表里点击：
+### 8.2 数据集一直不索引
 
-- 摘要
-- Q&A
-- 图谱
+- 检查数据集是否为 `enbSts = enb`。
+- 检查 `idxSts` 是否仍为 `new`、`order` 或 `index`。
+- 检查后台任务是否正常运行。
+- 检查文件是否可读取。
 
-把状态从 `nobd` 改成 `new`，后台增强任务就会开始跑。
+### 8.3 问答失败
 
-对应代码：
-- [Dataset.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/repository/Dataset.vue:379>)
-- [DatasetEnhanceVectorQueue.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/queue/DatasetEnhanceVectorQueue.py:1>)
-- [dataset_to_enhance.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/dataset_to_enhance.py:1>)
+- 检查默认 LLM 是否已配置。
+- 检查模型供应商参数是否正确。
+- 检查知识库是否已有 `ready` 状态的数据集。
+- 检查引用来源是否正常返回。
 
-## 5. 如何运用知识库进行问答
+### 8.4 检索效果差
 
-进入 `/main/chat` 页面：
+- 检查 embedding 模型是否与知识库索引一致。
+- 检查 `topK` 和 `smlrTrval` 设置是否过严。
+- 检查数据集分段是否过短、过长或内容为空。
 
-1. 在左侧下拉框选择知识库。
-2. 新建一个对话。
-3. 输入问题并发送。
+## 第二部分：用户手册
 
-问答链路：
+## 9. 用户手册目的
 
-1. 前端把问题发到 `POST /knb/chat/message`。
-2. 后端读取当前知识库设置。
-3. 从向量库里找相关片段。
-4. 用 `REPOSCHAT_PROMPT_TEMPLATE` 组装提示词。
-5. 调用用户选择的大模型流式输出答案。
-6. 返回引用来源，前端在消息里展示。
+用户手册用于指导普通用户完成 WenKB 的基础使用流程，包括配置模型、创建知识库、导入资料、构建索引、进行问答、查看引用、搜索资料和处理常见问题。
 
-如果已有历史对话，系统还会先对历史内容做一次整理，再进入检索问答。
+## 10. 首次使用
 
-对应代码：
-- [Chat.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/Chat.vue:100>)
-- [Content.vue](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-client/src/views/main/chat/Content.vue:107>)
-- [ChatApi.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/api/knb/ChatApi.py:131>)
-- [ask_to_llm.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/ask_to_llm.py:41>)
-- [llm_client_tools.py](<E:/111学习/4.1大四上/校内实习/wenkb-main/wenkb-server/server/core/tools/llm_client_tools.py:109>)
+首次使用建议按以下顺序进行：
 
-## 6. 常见排查点
+1. 启动 WenKB。
+2. 进入设置页配置模型供应商。
+3. 选择默认聊天模型。
+4. 创建一个知识库。
+5. 导入文档或网页链接。
+6. 启用数据集并等待索引完成。
+7. 进入聊天页选择知识库提问。
 
-1. 大模型回答异常
-   - 检查供应商 `api_key` / `base_url`
-   - 检查“模型首选项”是否选中了正确的 LLM
+## 11. 配置大模型
 
-2. 知识库没有内容
-   - 检查数据集是否 `enb = enb`
-   - 检查 `idxSts` 是否已经 `ready`
-   - 查看 `DatasetIndexError`
+WenKB 支持多种模型供应商，用户需要至少配置一个可用的聊天模型。
 
-3. 检索不到答案
-   - 检查知识库的 embedding 模型是否和已构建索引一致
-   - 检查 `topK` 和 `smlrTrval`
-   - 检查数据集是否真的被切分并写入向量库
+### 11.1 配置供应商
 
-4. 端口不一致
-   - `README.md` 里写过 `6088`
-   - 但 `app.py` 当前实际启动参数是 `16088`
+1. 打开“设置”。
+2. 进入“模型设置”。
+3. 选择需要使用的供应商。
+4. 填写该供应商要求的参数，例如 API Key 或服务地址。
+5. 保存配置。
 
+### 11.2 选择默认聊天模型
+
+1. 在模型设置中找到“模型首选项”。
+2. 选择默认 LLM。
+3. 保存后，知识库问答和知识增强会优先使用该模型。
+
+如果未选择默认 LLM，问答时可能会提示模型不可用或无法生成答案。
+
+## 12. 创建知识库
+
+1. 进入“知识库”页面。
+2. 点击新建。
+3. 填写知识库名称和介绍。
+4. 选择索引模型。
+5. 保存知识库。
+
+注意：索引模型决定向量检索方式。知识库已有索引后，不建议随意切换索引模型；确需切换时，应重新构建相关索引。
+
+## 13. 导入资料
+
+### 13.1 导入文档
+
+1. 进入知识库详情页。
+2. 打开“数据集”页面。
+3. 选择“导入文档”。
+4. 上传 PDF、Word、Markdown、TXT、PPT 等资料。
+5. 导入后检查数据集状态。
+6. 启用数据集并等待索引完成。
+
+扫描版 PDF 可能无法被正确解析，建议优先使用可复制文字的文档。
+
+### 13.2 导入网页链接
+
+1. 进入知识库详情页。
+2. 选择“导入网页链接”。
+3. 每行输入一个 URL。
+4. 保存后等待系统抓取和索引。
+
+如果网页无法访问或内容无法解析，系统会保留失败状态，用户可以查看错误原因后重新导入。
+
+## 14. 管理数据集
+
+用户可以在知识库详情中查看数据集列表，并维护以下内容：
+
+- 启用或停用数据集。
+- 查看索引状态。
+- 重新构建索引。
+- 查看分段内容。
+- 维护摘要、Q&A 和三元组。
+- 删除不再需要的数据集。
+
+当数据集状态为 `ready` 时，说明该数据集已经可以参与检索和问答。
+
+## 15. 知识库问答
+
+1. 进入“聊天”页面。
+2. 选择要使用的知识库。
+3. 新建或选择一个对话。
+4. 输入问题并发送。
+5. 等待系统流式返回答案。
+6. 查看答案下方的引用来源。
+
+引用来源可以帮助用户判断回答依据。若答案不理想，可以调整知识库参数、补充资料或重新生成回答。
+
+## 16. 搜索资料
+
+1. 进入“搜索”页面。
+2. 输入关键词或自然语言问题。
+3. 查看搜索结果。
+4. 根据结果跳转到对应知识库或数据集。
+
+搜索结果依赖已完成索引的数据集。若搜索不到内容，应先检查数据集是否已经索引完成。
+
+## 17. 使用文档集
+
+文档集用于保存可编辑内容，并可将文档转入知识库作为数据集。
+
+常见操作包括：
+
+- 创建文档集。
+- 新建或编辑文档。
+- 查看文档版本。
+- 将文档内容转入知识库。
+
+文档转入知识库后，仍需要等待索引完成，才能参与问答和搜索。
+
+## 18. 用户常见问题
+
+### 18.1 为什么问答没有结果
+
+- 确认已经选择知识库。
+- 确认默认 LLM 已配置。
+- 确认知识库中有 `ready` 状态的数据集。
+- 尝试降低相似度阈值或补充更相关的资料。
+
+### 18.2 为什么导入后不能马上问答
+
+导入资料后，系统需要先解析文档、切分内容并构建向量索引。索引完成前，资料不会参与问答。
+
+### 18.3 为什么引用为空
+
+- 数据集可能尚未完成索引。
+- 问题与知识库内容相关度过低。
+- 相似度阈值设置过高。
+- 检索结果被过滤。
+
+### 18.4 为什么模型无法回答
+
+- API Key 或模型服务地址错误。
+- 默认 LLM 没有设置。
+- 模型供应商服务不可达。
+- 当前网络无法访问模型服务。
+
+## 19. 用户使用建议
+
+- 一个知识库尽量围绕一个主题组织资料。
+- 文件导入后先确认索引状态，再开始问答。
+- 对长文档可先查看分段质量，再判断回答效果。
+- 使用引用来源验证关键答案。
+- 定期清理无效或重复资料，保持知识库质量。
+
+## 20. 手册维护建议
+
+后续如果新增部署方式、用户角色、权限控制、模型供应商、文件类型或局域网访问能力，应同步更新本文，并补充对应测试计划和维护交接记录。
