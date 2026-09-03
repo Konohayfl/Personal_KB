@@ -1,6 +1,6 @@
 # WenKB 代码维护交接记录
 
-版本：v0.5
+版本：v0.6
 日期：2026-09-03
 状态：本轮维护已完成
 
@@ -17,6 +17,7 @@
 - [接口设计](api_design.md)
 - [开发者与用户手册](wenkb_operation_guide.md)
 - [变更管理](change_management.md)
+- [README](../README.md)
 
 ## 2. 已完成工作
 
@@ -88,6 +89,13 @@
 - 文档覆盖变更分类、等级、流程、代码与文档同步规则、数据库与索引变更、测试门禁、版本提交、回滚和记录模板。
 - 新增对应文档测试，确保变更管理文档保持实现无关并与 AGENTS 导航一致。
 
+### 2.11 README 重写
+
+- 将根目录 README 从宣传式首页重写为工程入口页。
+- 新版 README 明确后端、前端、验证命令、文档入口、目录说明、数据与运行约定和常见问题。
+- 删除外链截图和营销化表述，降低首页噪声并增强可维护性。
+- 新增 README 对应测试，防止首页内容再次退化为非工程化描述。
+
 ## 3. 当前未完成事项
 
 暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
@@ -101,6 +109,8 @@
 - `docs/code_maintenance_handoff.md`
 - `docs/wenkb_operation_guide.md`
 - `tests/test_change_management.py`
+- `README.md`
+- `tests/test_readme.py`
 - `tests/test_operation_guide.py`
 
 这些改动属于本轮文档维护，不涉及应用代码。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。

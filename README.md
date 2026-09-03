@@ -1,26 +1,87 @@
-WenKB - 智能个人知识库桌面应用 WenKB 是一款基于大语言模型（LLM）的下一代知识管理工具，融合AI能力重新定义知识组织方式。支持多源知识整合、智能问答、自动化知识加工和可视化知识网络，助力构建您的第二大脑。
+# WenKB
 
-✨ 核心功能 智能知识库管理 多格式导入：支持文档（PDF/Word/Markdown）、网页链接、纯文本等多源数据接入
+WenKB 是一套面向个人与小团队的本地知识库系统，支持模型配置、知识库管理、文档与网页导入、索引构建、问答、搜索和文档集管理。
 
-AI自动化处理：自动分段、生成摘要、创建Q&A对、提取知识图谱三元组
+## 快速开始
 
-动态维护：支持文档版本管理、知识关联标注、批量处理操作
+### 后端
 
-双模式编辑器：Markdown + 富文本混合编辑
+1. 进入 `wenkb-server`。
+2. 确认本机已安装 Python 3.11 及相关依赖。
+3. 启动服务：
 
-强大的搜索与问答 语义搜索：基于向量数据库的跨文档深度检索
+```powershell
+python app.py
+```
 
-对话式交互：支持追问、溯源引用、多轮知识推理
+后端默认监听 `http://127.0.0.1:16088`，健康检查接口为 `GET /health`。
 
-🌐 多模型支持 兼容 OpenAI GPT、DeepSeek、Moonshot AI等主流大模型，支持连接Ollama本地模型部署。
-<img width="1025" alt="2025-02-28_122336" src="https://github.com/user-attachments/assets/c77c287a-73eb-44c5-b1cb-5d254665fedb" />
-<img width="1025" alt="2025-02-28_122356" src="https://github.com/user-attachments/assets/63a666ec-8fa3-434d-8947-9a1885911474" />
-<img width="1025" alt="2025-02-28_122407" src="https://github.com/user-attachments/assets/3529d3ab-e657-4fbd-8f15-dbef671ac3f8" />
-<img width="1280" alt="2025-02-28_122422" src="https://github.com/user-attachments/assets/0782b476-6fc2-492d-bfeb-a69bd3350105" />
-<img width="1280" alt="2025-02-28_122446" src="https://github.com/user-attachments/assets/0fba822d-f1b7-4202-9bcc-7241679b7ea8" />
-<img width="1280" alt="2025-02-28_122528" src="https://github.com/user-attachments/assets/a6c4f401-5bde-4a4d-b481-62e4b7786b70" />
-<img width="1280" alt="2025-02-28_122535" src="https://github.com/user-attachments/assets/00d7d222-e269-429d-abe1-9c6eb613f86b" />
-<img width="1280" alt="2025-02-28_122551" src="https://github.com/user-attachments/assets/fa0cf583-127d-4e7b-a3b4-b7735d01eefd" />
-<img width="1280" alt="2025-02-28_122631" src="https://github.com/user-attachments/assets/be51245e-cb54-4872-9a24-a8c3e93c0011" />
-<img width="1280" alt="2025-02-28_122642" src="https://github.com/user-attachments/assets/809a4ea1-902b-4860-a03e-2c0144dc11ee" />
+### 前端
 
+1. 进入 `wenkb-client`。
+2. 安装前端依赖。
+3. 启动开发服务：
+
+```powershell
+npm install
+npm run dev
+```
+
+前端开发服务默认运行在 `http://127.0.0.1:11420`，并代理后端 `16088` 端口。
+
+### 验证
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests
+```
+
+## 主要能力
+
+- 模型供应商配置与默认模型选择
+- 知识库创建、编辑、删除与可见性控制
+- 文档、网页链接和文档集导入
+- 数据集索引、摘要、Q&A 和三元组增强
+- 知识库问答、引用展示和搜索
+- 本地运行、维护交接和部署运维
+
+## 文档入口
+
+- [需求分析](docs/requirements_analysis.md)
+- [概要设计](docs/architecture_design.md)
+- [详细设计](docs/detailed_design.md)
+- [数据库设计](docs/database_design.md)
+- [接口设计](docs/api_design.md)
+- [开发者与用户手册](docs/wenkb_operation_guide.md)
+- [部署运维](docs/deployment_guide.md)
+- [测试计划](docs/test_plan.md)
+- [变更管理](docs/change_management.md)
+- [代码维护交接](docs/code_maintenance_handoff.md)
+
+## 目录说明
+
+| 目录 | 说明 |
+|---|---|
+| `wenkb-server` | 后端服务、数据库迁移、模型资源和本地存储 |
+| `wenkb-client` | 前端页面和桌面端工程 |
+| `docs` | 需求、设计、测试、运维和维护文档 |
+| `tests` | 文档测试和维护测试 |
+
+## 数据与运行约定
+
+- 默认数据库文件：`wenkb-server/resources/database/wenkb.db`
+- 默认上传目录：`wenkb-server/resources/static/upload`
+- 默认文档目录：`wenkb-server/resources/documents`
+- 默认向量库目录：`wenkb-server/resources/vector_store`
+- 后端启动时会执行数据库版本检查与初始化
+- 首次运行会自动创建所需目录和数据库文件
+- 当前以本地单机部署为主，适合本机运行和小范围验证
+
+## 常见问题
+
+- 如果问答没有结果，先确认默认 LLM 已配置，且知识库中已有 `ready` 状态的数据集。
+- 如果资料导入后无法检索，先确认索引是否完成，或者数据集是否已启用。
+- 如果本地启动失败，先检查端口占用、目录权限和数据库文件可写性。
+
+## 截图
+
+项目界面截图和交互说明已收纳在仓库其他文档中。README 只保留项目入口和快速启动信息，避免首页过度膨胀。
