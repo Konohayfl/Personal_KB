@@ -122,28 +122,31 @@
 - 增加本地 embedding 模型目录、权重文件和 Git LFS 占位文件检查；模型资源不完整时直接给出下载或执行 `git lfs pull` 的明确提示。
 - 增加依赖版本和 Git LFS 占位文件回归测试，避免再次将不完整模型包装成“知识库向量集合创建失败”。
 
+### 2.16 软件工程评审与文档导航修正
+
+- 将 `AGENTS.md` 中已存在维护内容的“后续待补充”改为“维护记录”，并删除重复的同名子标题。
+- 增加文档回归测试，确保导航标题不会再次把已完成记录标记为待补充。
+- 完成一次软件工程静态评审，识别出真实鉴权缺失、前后端登录接口不一致、生产调试模式、上传校验不足、数据库约束不足、后台线程导入即启动和测试覆盖偏文档化等后续风险。
+
 ## 3. 当前未完成事项
 
-暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
+以下事项尚未在本轮实现，按风险优先级排列：
+
+- 高：接入真实登录态和 JWT 鉴权，移除后端固定 `client_default_user`，并补齐前端调用的登录、注册接口。
+- 高：关闭生产环境 `debug=True`，限制服务监听范围，并为文件上传增加大小、类型和内容校验。
+- 中：补充数据库外键、级联删除或等效一致性机制，避免仅依赖应用层清理产生孤儿数据。
+- 中：调整队列线程的启动生命周期，避免模块导入时启动后台线程，并增加接口级和业务流程级测试。
+- 低：关闭默认 SQL 回显，补充依赖安全扫描、前端 lint/test 脚本和大体积 chunk 的构建治理。
 
 ## 4. 当前工作区状态
 
-本轮维护涉及以下文件，且已纳入本次提交：
+本次文档维护提交涉及以下文件：
 
 - `AGENTS.md`
-- `wenkb-server/server/utils/secretutils.py`
-- `wenkb-server/server/core/tools/llm_client_tools.py`
-- `wenkb-server/requirements.txt`
-- `tests/test_code_maintenance.py`
-- `docs/wenkb_operation_guide.md`
-- `docs/change_management.md`
 - `docs/code_maintenance_handoff.md`
 - `tests/test_change_management.py`
-- `README.md`
-- `tests/test_readme.py`
-- `tests/test_operation_guide.py`
 
-这些改动包含模型 API Key 加密缺陷修复及其测试、维护记录和规则记录。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
+此前模型配置和本地 embedding 修复已由历史提交完成。本次提交仅更新维护导航、评审记录及其回归测试。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
 
 ## 5. 验证状态
 
@@ -153,7 +156,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 33 tests - OK`，并额外验证 `m3e-small` 可生成 512 维 embedding 向量、`pip check` 无依赖冲突。
+当前验证结果为后端 `Ran 34 tests - OK`、`.venv\Scripts\python.exe -m pip check` 无依赖冲突，前端 `npm run build` 构建成功。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
 ## 6. 下次恢复建议
 

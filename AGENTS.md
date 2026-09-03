@@ -29,9 +29,7 @@
 
 - 测试计划：[docs/test_plan.md](docs/test_plan.md)
 
-## 后续待补充
-
-### 维护记录
+## 维护记录
 
 - 2026-09-03：修复 Windows 本地 m3e embedding 因 Torch 动态库和 Git LFS 占位权重导致的向量集合创建失败；固定 `torch==2.3.1`、`fsspec==2024.6.1`，补充模型资源校验、回归测试和操作手册说明，详细记录见 [docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)。
 
