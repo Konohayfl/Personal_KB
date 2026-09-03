@@ -1,6 +1,6 @@
 # WenKB 代码维护交接记录
 
-版本：v0.8
+版本：v0.9
 日期：2026-09-03
 状态：本轮维护已完成
 
@@ -108,6 +108,12 @@
 - 后端默认使用与客户端加密约定兼容的有效 AES 密钥和 IV，并支持通过 `WENKB_AES_KEY`、`WENKB_AES_IV` 环境变量覆盖。
 - 增加 AES 参数长度校验和 API Key 加解密回归测试，避免模型供应商配置再次因占位密钥失败。
 
+### 2.14 OpenAI 兼容模型客户端初始化修复
+
+- 修复 `langchain-openai 0.1.22`、`openai 1.42.0` 与 `httpx 0.28.x` 组合下，`ChatOpenAI` 初始化传递废弃 `proxies` 参数而失败的问题。
+- 为 OpenAI 兼容供应商显式创建同步和异步 `httpx` 客户端，兼容当前依赖版本。
+- 在后端依赖中固定 `httpx==0.28.1`，并增加通义兼容模型客户端初始化回归测试。
+
 ## 3. 当前未完成事项
 
 暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
@@ -118,10 +124,12 @@
 
 - `AGENTS.md`
 - `wenkb-server/server/utils/secretutils.py`
+- `wenkb-server/server/core/tools/llm_client_tools.py`
+- `wenkb-server/requirements.txt`
 - `tests/test_code_maintenance.py`
+- `docs/wenkb_operation_guide.md`
 - `docs/change_management.md`
 - `docs/code_maintenance_handoff.md`
-- `docs/wenkb_operation_guide.md`
 - `tests/test_change_management.py`
 - `README.md`
 - `tests/test_readme.py`
@@ -137,7 +145,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 21 tests - OK`。
+当前验证结果为 `Ran 30 tests - OK`。
 
 ## 6. 下次恢复建议
 

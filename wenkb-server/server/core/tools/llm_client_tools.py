@@ -1,6 +1,7 @@
 import time
 from functools import wraps
 from logger import logger
+import httpx
 from langchain_openai import ChatOpenAI
 from langchain_community.llms import Ollama
 from langchain_community.embeddings import HuggingFaceEmbeddings, OllamaEmbeddings, OpenAIEmbeddings
@@ -55,7 +56,16 @@ class LLMClient:
     if self.provider == 'ollama':
       return Ollama(model=self.model, base_url=self.args.get('base_url', None), temperature=self.temperature)
     else:
-      return ChatOpenAI(model=self.model, base_url=self.args.get('base_url', None), api_key=self.args.get('api_key', None), temperature=self.temperature)
+      # OpenAI 1.42.0 passes the deprecated ``proxies`` keyword to its
+      # default httpx client, which httpx 0.28 no longer accepts.
+      return ChatOpenAI(
+        model=self.model,
+        base_url=self.args.get('base_url', None),
+        api_key=self.args.get('api_key', None),
+        temperature=self.temperature,
+        http_client=httpx.Client(),
+        http_async_client=httpx.AsyncClient()
+      )
   def invoke(self, prompts: str):
     return self.client.invoke(prompts)
   def stream(self, prompts: str):

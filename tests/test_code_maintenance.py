@@ -185,6 +185,24 @@ class CodeMaintenanceTest(unittest.TestCase):
         self.assertNotEqual(encrypted, "test-tongyi-api-key")
         self.assertEqual(aes_decrypt(encrypted), "test-tongyi-api-key")
 
+    def test_openai_compatible_client_initializes_with_current_httpx(self):
+        from server.core.tools.llm_client_tools import LLMClient
+
+        with patch(
+            "server.core.tools.llm_client_tools.get_model_arguments",
+            return_value={
+                "provider": "tongyi",
+                "model": "qwen-plus",
+                "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "api_key": "test-api-key",
+            },
+        ):
+            llm_client = LLMClient(userId="user-1")
+
+        self.assertIsNotNone(llm_client.client.root_client)
+        self.assertIsNotNone(llm_client.client.root_async_client)
+        llm_client.client.root_client.close()
+
 
 if __name__ == "__main__":
     unittest.main()
