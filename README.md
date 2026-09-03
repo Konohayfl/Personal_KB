@@ -6,11 +6,10 @@ WenKB 是一套面向个人与小团队的本地知识库系统，支持模型�
 
 ### 后端
 
-1. 进入 `wenkb-server`。
-2. 确认本机已安装 Python 3.11 及相关依赖。
-3. 启动服务：
+从仓库根目录执行：
 
 ```powershell
+cd wenkb-server
 python app.py
 ```
 
@@ -18,11 +17,10 @@ python app.py
 
 ### 前端
 
-1. 进入 `wenkb-client`。
-2. 安装前端依赖。
-3. 启动开发服务：
+打开新的终端窗口，从仓库根目录执行：
 
 ```powershell
+cd wenkb-client
 npm install
 npm run dev
 ```

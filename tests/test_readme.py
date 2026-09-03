@@ -39,6 +39,9 @@ class ReadmeTest(unittest.TestCase):
             "16088",
             "11420",
             "wenkb-server/resources/database/wenkb.db",
+            "cd wenkb-server",
+            "cd wenkb-client",
+            "npm run dev",
         ]
         for item in required_values:
             self.assertIn(item, text)
