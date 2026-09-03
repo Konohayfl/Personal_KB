@@ -2,9 +2,9 @@ import time
 from functools import wraps
 from logger import logger
 import httpx
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.llms import Ollama
-from langchain_community.embeddings import HuggingFaceEmbeddings, OllamaEmbeddings, OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings, OllamaEmbeddings
 from sqlalchemy import select
 from server.db.DbManager import session_scope
 from server.model.orm_sys import ModelParam, ModelPrvdInfo, ModelPrvdModl, SettingParam, SettingEmrt
@@ -98,7 +98,13 @@ class EmbeddingFunction:
       )
       return DEFAULT_EMBEDDING_FUNCTION_MAP[model]
     else:
-      return OpenAIEmbeddings(model=self.model, openai_api_base=self.args.get('base_url', None), openai_api_key=self.args.get('api_key', None))
+      return OpenAIEmbeddings(
+        model=self.model,
+        base_url=self.args.get('base_url', None),
+        api_key=self.args.get('api_key', None),
+        http_client=httpx.Client(),
+        http_async_client=httpx.AsyncClient()
+      )
 
 # 获取知识库的嵌入模型
 @ttl_cached(ttl_seconds=60, maxsize=100)

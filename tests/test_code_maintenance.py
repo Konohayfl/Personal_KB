@@ -185,23 +185,78 @@ class CodeMaintenanceTest(unittest.TestCase):
         self.assertNotEqual(encrypted, "test-tongyi-api-key")
         self.assertEqual(aes_decrypt(encrypted), "test-tongyi-api-key")
 
-    def test_openai_compatible_client_initializes_with_current_httpx(self):
+    def test_openai_compatible_chat_clients_initialize_for_all_providers(self):
         from server.core.tools.llm_client_tools import LLMClient
 
-        with patch(
-            "server.core.tools.llm_client_tools.get_model_arguments",
-            return_value={
-                "provider": "tongyi",
-                "model": "qwen-plus",
-                "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-                "api_key": "test-api-key",
-            },
-        ):
-            llm_client = LLMClient(userId="user-1")
+        provider_configs = {
+            "openai": ("gpt-4o-mini", "https://api.openai.com/v1"),
+            "deepseek": ("deepseek-chat", "https://api.deepseek.com/v1"),
+            "moonshot": ("moonshot-v1-8k", "https://api.moonshot.cn/v1"),
+            "tongyi": (
+                "qwen-plus",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+            "zhipuai": (
+                "glm-4-flash",
+                "https://open.bigmodel.cn/api/paas/v4",
+            ),
+            "nvidia": (
+                "meta/llama-3.1-405b-instruct",
+                "https://integrate.api.nvidia.com/v1",
+            ),
+        }
 
-        self.assertIsNotNone(llm_client.client.root_client)
-        self.assertIsNotNone(llm_client.client.root_async_client)
-        llm_client.client.root_client.close()
+        for provider, (model, base_url) in provider_configs.items():
+            with self.subTest(provider=provider), patch(
+                "server.core.tools.llm_client_tools.get_model_arguments",
+                return_value={
+                    "provider": provider,
+                    "model": model,
+                    "base_url": base_url,
+                    "api_key": "test-api-key",
+                },
+            ):
+                llm_client = LLMClient(userId="user-1")
+
+            self.assertIsNotNone(llm_client.client.root_client)
+            self.assertIsNotNone(llm_client.client.root_async_client)
+            llm_client.client.root_client.close()
+
+    def test_openai_compatible_embedding_clients_initialize_for_all_providers(self):
+        from server.core.tools.llm_client_tools import EmbeddingFunction
+
+        provider_configs = {
+            "openai": ("text-embedding-3-small", "https://api.openai.com/v1"),
+            "deepseek": ("deepseek-embedding", "https://api.deepseek.com/v1"),
+            "moonshot": ("embedding-v1", "https://api.moonshot.cn/v1"),
+            "tongyi": (
+                "text-embedding-v2",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+            "zhipuai": (
+                "embedding-3",
+                "https://open.bigmodel.cn/api/paas/v4",
+            ),
+            "nvidia": (
+                "nvidia/embed-qa-4",
+                "https://integrate.api.nvidia.com/v1",
+            ),
+        }
+
+        for provider, (model, base_url) in provider_configs.items():
+            with self.subTest(provider=provider), patch(
+                "server.core.tools.llm_client_tools.get_model_arguments",
+                return_value={
+                    "provider": provider,
+                    "model": model,
+                    "base_url": base_url,
+                    "api_key": "test-api-key",
+                },
+            ):
+                embedding = EmbeddingFunction(userId="user-1")
+
+            self.assertIsNotNone(embedding.function.client)
+            self.assertIsNotNone(embedding.function.async_client)
 
 
 if __name__ == "__main__":

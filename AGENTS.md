@@ -35,3 +35,4 @@
 
 - 2026-09-03：修复模型供应商 API Key 保存时因 AES 占位密钥 `xxxx` 无效而触发内部错误的问题；后端改用有效 AES 参数并增加环境变量覆盖、加解密回归测试，详细记录见 [docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)。
 - 2026-09-03：修复 OpenAI 兼容模型使用 `httpx 0.28.x` 时 `ChatOpenAI` 初始化传递 `proxies` 参数导致的对话错误；增加显式 HTTP 客户端、依赖固定和回归测试，详细记录见 [docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)。
+- 2026-09-03：检查并修复 OpenAI 兼容 embedding 客户端在相同依赖组合下的 `proxies` 初始化错误；覆盖 OpenAI、DeepSeek、Moonshot、通义、智谱和 NVIDIA，增加跨供应商回归测试，详细记录见 [docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)。

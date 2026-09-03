@@ -111,8 +111,9 @@
 ### 2.14 OpenAI 兼容模型客户端初始化修复
 
 - 修复 `langchain-openai 0.1.22`、`openai 1.42.0` 与 `httpx 0.28.x` 组合下，`ChatOpenAI` 初始化传递废弃 `proxies` 参数而失败的问题。
-- 为 OpenAI 兼容供应商显式创建同步和异步 `httpx` 客户端，兼容当前依赖版本。
-- 在后端依赖中固定 `httpx==0.28.1`，并增加通义兼容模型客户端初始化回归测试。
+- 为 OpenAI 兼容供应商的聊天和 embedding 客户端显式创建同步和异步 `httpx` 客户端，兼容当前依赖版本。
+- 检查确认 OpenAI、DeepSeek、Moonshot、通义、智谱和 NVIDIA 共用该客户端路径，均已覆盖修复；Ollama 使用独立客户端，不受该问题影响。
+- 在后端依赖中固定 `httpx==0.28.1`，并增加全部 OpenAI 兼容供应商的聊天与 embedding 客户端初始化回归测试。
 
 ## 3. 当前未完成事项
 
@@ -145,7 +146,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 30 tests - OK`。
+当前验证结果为 `Ran 31 tests - OK`。
 
 ## 6. 下次恢复建议
 
