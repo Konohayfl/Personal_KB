@@ -258,6 +258,29 @@ class CodeMaintenanceTest(unittest.TestCase):
             self.assertIsNotNone(embedding.function.client)
             self.assertIsNotNone(embedding.function.async_client)
 
+    def test_local_embedding_model_validation_rejects_lfs_pointer(self):
+        from server.core.tools.llm_client_tools import validate_local_embedding_model
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_dir = Path(temp_dir)
+            (model_dir / "pytorch_model.bin").write_bytes(
+                b"version https://git-lfs.github.com/spec/v1\n"
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "Git LFS"):
+                validate_local_embedding_model(str(model_dir))
+
+    def test_embedding_dependency_versions_are_pinned_for_windows_runtime(self):
+        root = Path(__file__).resolve().parents[1]
+        requirements = (
+            root / "wenkb-server" / "requirements.txt"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("torch==2.3.1", requirements)
+        self.assertIn("fsspec==2024.6.1", requirements)
+
 
 if __name__ == "__main__":
     unittest.main()

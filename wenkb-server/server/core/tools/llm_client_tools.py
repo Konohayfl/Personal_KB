@@ -1,5 +1,6 @@
 import time
 from functools import wraps
+from pathlib import Path
 from logger import logger
 import httpx
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -17,6 +18,27 @@ DEFAULT_EMBEDDING_FUNCTION = None
 DEFAULT_EMBEDDING_DEVICE = 'cpu'
 
 DEFAULT_EMBEDDING_FUNCTION_MAP = {} # { modelName: function }
+
+
+def validate_local_embedding_model(model_path: str):
+  """检查本地 embedding 模型目录，避免将 Git LFS 占位文件交给 Transformers。"""
+  path = Path(model_path)
+  weight_path = path / 'pytorch_model.bin'
+  if not path.is_dir():
+    raise FileNotFoundError(
+      f'本地 embedding 模型目录不存在: {path}，请准备完整的 m3e-small 模型文件'
+    )
+  if not weight_path.is_file():
+    raise FileNotFoundError(
+      f'本地 embedding 模型权重不存在: {weight_path}，请准备完整的 m3e-small 模型文件'
+    )
+  with weight_path.open('rb') as weight_file:
+    header = weight_file.read(64)
+  if header.startswith(b'version https://git-lfs.github.com/spec/v1'):
+    raise RuntimeError(
+      f'检测到 Git LFS 占位文件: {weight_path}，请安装 Git LFS 并执行 git lfs pull，'
+      '或下载完整的 m3e-small 模型权重'
+    )
 
 def ttl_cached(ttl_seconds: int = 60, maxsize: int = 100):
   cache = {}
@@ -90,6 +112,7 @@ class EmbeddingFunction:
       model_name = model
       if (not model_name.startswith(model_dir)): # 需要添加上默认的路径
         model_name = model_dir + model_name
+      validate_local_embedding_model(model_name)
       # 将系统默认的嵌入向量缓存到内存中
       DEFAULT_EMBEDDING_FUNCTION_MAP[model] = HuggingFaceEmbeddings(
         model_name=model_name,

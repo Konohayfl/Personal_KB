@@ -115,6 +115,13 @@
 - 检查确认 OpenAI、DeepSeek、Moonshot、通义、智谱和 NVIDIA 共用该客户端路径，均已覆盖修复；Ollama 使用独立客户端，不受该问题影响。
 - 在后端依赖中固定 `httpx==0.28.1`，并增加全部 OpenAI 兼容供应商的聊天与 embedding 客户端初始化回归测试。
 
+### 2.15 本地 embedding 向量集合创建修复
+
+- 将后端 `torch` 固定为已在 Windows 环境验证可正常导入的 `2.3.1`，并固定 `fsspec==2024.6.1` 以满足 `datasets==2.21.0` 的依赖约束。
+- 修复本地 `m3e-small` 模型权重为完整文件，并验证 `EmbeddingFunction` 可以生成 512 维向量。
+- 增加本地 embedding 模型目录、权重文件和 Git LFS 占位文件检查；模型资源不完整时直接给出下载或执行 `git lfs pull` 的明确提示。
+- 增加依赖版本和 Git LFS 占位文件回归测试，避免再次将不完整模型包装成“知识库向量集合创建失败”。
+
 ## 3. 当前未完成事项
 
 暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
@@ -146,7 +153,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 31 tests - OK`。
+当前验证结果为 `Ran 33 tests - OK`，并额外验证 `m3e-small` 可生成 512 维 embedding 向量、`pip check` 无依赖冲突。
 
 ## 6. 下次恢复建议
 

@@ -298,6 +298,7 @@ WenKB 支持多种模型供应商，用户需要至少配置一个可用的聊�
 - 默认 LLM 没有设置。
 - 模型供应商服务不可达。
 - 当前网络无法访问模型服务。
+- 如果日志出现 `cloned a repository without having git-lfs installed` 或 `Git LFS 占位文件`，请在项目根目录安装 Git LFS 并执行 `git lfs pull`，或将完整的 `m3e-small` 权重放入 `wenkb-server/resources/model/m3e/m3e-small`。
 - 如果日志出现 `Client.__init__() got an unexpected keyword argument 'proxies'`，请确认已使用项目最新依赖并重启后端；这是 OpenAI 兼容聊天或 embedding 客户端与 `httpx` 版本组合不匹配导致的初始化错误。
 
 ## 19. 用户使用建议
