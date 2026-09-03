@@ -22,6 +22,7 @@
 
 - 操作流程：[docs/wenkb_operation_guide.md](docs/wenkb_operation_guide.md)
 - 代码维护交接：[docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)
+- 部署运维：[docs/deployment_guide.md](docs/deployment_guide.md)
 
 ## 测试与验证文档
 
@@ -29,6 +30,5 @@
 
 ## 后续待补充
 
-- 部署运维：`docs/deployment_guide.md`
 - 用户手册：`docs/user_manual.md`
 - 变更管理：`docs/change_management.md`
