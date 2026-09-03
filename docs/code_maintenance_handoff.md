@@ -1,6 +1,6 @@
 # WenKB 代码维护交接记录
 
-版本：v0.2
+版本：v0.3
 日期：2026-09-03
 状态：本轮维护已完成
 
@@ -68,58 +68,39 @@
 - `ask_to_llm_stream` 在生成中断时会回落到兜底消息，并将最终内容写回消息记录。
 - 新增对应的维护测试，覆盖数据库版本 5、迁移脚本和聊天失败回落。
 
+### 2.8 测试计划文档
+
+- 新增 `docs/test_plan.md`，补齐测试计划与测试用例设计基线。
+- 测试计划覆盖测试目标、范围、策略、环境、数据、主要测试项、缺陷管理、通过标准与风险。
+- 新增对应文档测试，确保测试计划文档保持实现无关并与 AGENTS 导航一致。
+
 ## 3. 当前未完成事项
 
 暂无同类未完成事项。若后续继续维护，可从模型配置、文件上传和更细粒度的只读接口收敛继续审查。
 
 ## 4. 当前工作区状态
 
-当前工作区存在尚未提交的代码改动，涉及以下文件或目录：
+本轮维护涉及以下文件，且已纳入本次提交：
 
-- `wenkb-server/app.py`
-- `wenkb-server/config/common.py`
-- `wenkb-server/server/api/sys/HealthApi.py`
-- `wenkb-server/server/api/knb/ReposInfoApi.py`
-- `wenkb-server/server/api/knb/DatasetApi.py`
-- `wenkb-server/server/api/knb/ChatApi.py`
-- `wenkb-server/server/api/knb/SearchApi.py`
-- `wenkb-server/server/api/doc/DocsetInfoApi.py`
-- `wenkb-server/server/core/knb/DatasetService.py`
-- `wenkb-server/server/core/knb/ReposService.py`
-- `wenkb-server/server/core/doc/DocsetService.py`
-- `wenkb-server/server/core/queue/DatasetToVectorQueue.py`
-- `wenkb-server/server/core/queue/DatasetEnhanceVectorQueue.py`
-- `wenkb-server/server/core/tools/ask_to_llm.py`
-- `wenkb-server/server/core/tools/repos_vector_db.py`
-- `wenkb-server/server/db/DbUpgrade.py`
-- `wenkb-server/server/db/upgrade/ddl/0.sql`
-- `wenkb-server/server/db/upgrade/ddl/1.sql`
-- `wenkb-server/server/db/upgrade/ddl/2.sql`
-- `wenkb-server/server/db/upgrade/ddl/4.sql`
-- `wenkb-server/server/db/upgrade/ddl/5.sql`
-- `wenkb-server/server/model/orm_knb.py`
-- `docs/api_design.md`
-- `tests/test_api_design.py`
-- `tests/test_code_maintenance.py`
+- `docs/test_plan.md`
+- `docs/code_maintenance_handoff.md`
+- `tests/test_test_plan.py`
 
-这些改动可能包含用户此前的导航修正，不应使用回退命令整体撤销。下次开始前应先查看 `git diff`，区分已有改动和新改动。
+这些改动属于本轮文档维护，不涉及应用代码。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
 
 ## 5. 验证状态
 
 已完成过以下验证：
 
 ```powershell
-.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为 `Ran 17 tests - OK`。另外，测试运行时已经触发数据库升级器从版本 `4` 迁移到 `5`，并完成了 `ddl/5.sql` 的实际迁移执行。
+当前验证结果为 `Ran 20 tests - OK`。
 
 ## 6. 下次恢复建议
 
 1. 先运行 `git status --short` 和 `git diff --stat`，确认没有新的用户改动。
-2. 先完成数据库迁移和测试断言修正，确保数据库版本链路闭合。
-3. 再处理聊天失败落库，补充失败路径测试。
-4. 统一抽取或复用资源访问权限校验，逐组补充接口测试。
-5. 运行编译、完整测试和必要的 SQLite 升级验证。
-6. 检查差异后按仓库规则创建 Git commit。
+2. 若继续补文档，优先同步需求、设计、测试和运维文档之间的术语。
+3. 若继续做代码维护，再按交接记录中的优先级推进接口与失败路径补强。
+4. 检查差异后按仓库规则创建 Git commit。
