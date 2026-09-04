@@ -18,6 +18,10 @@
 - 数据库设计：[docs/database_design.md](docs/database_design.md)
 - 接口设计：[docs/api_design.md](docs/api_design.md)
 
+## 学习与问答记录
+
+- 架构与知识点问答记录：[docs/architecture_knowledge_qa.md](docs/architecture_knowledge_qa.md)
+
 ## 运行与操作文档
 
 - 开发者与用户手册：[docs/wenkb_operation_guide.md](docs/wenkb_operation_guide.md)
@@ -30,6 +34,8 @@
 - 测试计划：[docs/test_plan.md](docs/test_plan.md)
 
 ## 维护记录
+
+- 2026-09-04：新增 [docs/architecture_knowledge_qa.md](docs/architecture_knowledge_qa.md)，用于持续记录后续关于项目架构、技术概念和代码实现的疑问与解答；新增对应文档回归测试，确保记录模板和导航链接完整。
 
 - 2026-09-03：修复 Windows 本地 m3e embedding 因 Torch 动态库和 Git LFS 占位权重导致的向量集合创建失败；固定 `torch==2.3.1`、`fsspec==2024.6.1`，补充模型资源校验、回归测试和操作手册说明，详细记录见 [docs/code_maintenance_handoff.md](docs/code_maintenance_handoff.md)。
 
