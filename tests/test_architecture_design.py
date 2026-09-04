@@ -10,7 +10,7 @@ class ArchitectureDesignTest(unittest.TestCase):
 
         req_sections = [
             "需求分析",
-            "现状调研",
+            "参考对象",
             "产品定位",
             "业务流程",
             "功能需求",

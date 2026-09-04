@@ -1,7 +1,7 @@
 # WenKB 代码维护交接记录
 
-版本：v0.9
-日期：2026-09-03
+版本：v1.1
+日期：2026-09-04
 状态：本轮维护已完成
 
 ## 1. 交接目的
@@ -128,6 +128,20 @@
 - 增加文档回归测试，确保导航标题不会再次把已完成记录标记为待补充。
 - 完成一次软件工程静态评审，识别出真实鉴权缺失、前后端登录接口不一致、生产调试模式、上传校验不足、数据库约束不足、后台线程导入即启动和测试覆盖偏文档化等后续风险。
 
+### 2.17 需求跟踪矩阵补录
+
+- 依据需求分析、概要设计、详细设计、数据库设计、接口设计、测试计划、部署运维和本交接记录，重建根目录 `第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx`。
+- “设计用RTM”统一覆盖 18 项功能需求（FR-001 至 FR-018）和 7 项非功能需求（NFR-001 至 NFR-007），分别记录需求/设计（PD）、当前实现（COD）和测试验证（UT）状态，并关联实现文件、接口和测试依据。
+- “变更履历”补录 2026-09-02 至 2026-09-04 的 20 条已有需求、设计、代码、数据、配置、部署和文档变更，保留影响需求编号与历史 Git commit，避免历史维护工作脱离需求基线。
+- 新增 `tests/test_rtm_workbook.py`，校验工作簿工作表、需求编号、状态标识、旧项目内容清理、变更记录完整性和关键历史变更可追溯性。
+
+### 2.18 向量索引与 embedding 知识记录
+
+- 在 `docs/architecture_knowledge_qa.md` 追加 Q1，解释 embedding 模型、向量索引、Chroma 持久化集合、索引构建、相似度检索、问答上下文和引用之间的关系。
+- 记录知识库绑定 embedding 模型与历史索引一致性的约束，并标注数据库设计建议值与当前相似度距离筛选实现之间的差异。
+- 扩展 `tests/test_architecture_knowledge_qa.py`，校验 Q1 的核心概念、代码映射、检索参数和注意事项均存在。
+- 修正 `tests/test_architecture_design.py` 中与当前需求文档不一致的章节断言，将已不存在的“现状调研”更新为实际章节“参考对象”。
+
 ## 3. 当前未完成事项
 
 以下事项尚未在本轮实现，按风险优先级排列：
@@ -143,10 +157,15 @@
 本次文档维护提交涉及以下文件：
 
 - `AGENTS.md`
+- `docs/architecture_knowledge_qa.md`
 - `docs/code_maintenance_handoff.md`
+- `tests/test_architecture_design.py`
+- `tests/test_architecture_knowledge_qa.py`
 - `tests/test_change_management.py`
+- `第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx`
+- `tests/test_rtm_workbook.py`
 
-此前模型配置和本地 embedding 修复已由历史提交完成。本次提交仅更新维护导航、评审记录及其回归测试。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
+此前模型配置和本地 embedding 修复已由历史提交完成。本次维护补充了需求跟踪矩阵及其回归测试。下次继续维护时，如发现新的未提交修改，应先查看 `git diff`，再区分后续改动与历史提交。
 
 ## 5. 验证状态
 
@@ -156,7 +175,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-当前验证结果为后端 `Ran 34 tests - OK`、`.venv\Scripts\python.exe -m pip check` 无依赖冲突，前端 `npm run build` 构建成功。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
+当前验证结果为后端 `Ran 41 tests - OK`、`.venv\Scripts\python.exe -m pip check` 无依赖冲突，`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 通过，前端 `npm run build` 构建成功。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
 ## 6. 下次恢复建议
 

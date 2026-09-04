@@ -37,6 +37,34 @@ class ArchitectureKnowledgeQATest(unittest.TestCase):
         agents = (root / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("docs/architecture_knowledge_qa.md", agents)
 
+    def test_vector_index_and_embedding_record_is_present(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "docs" / "architecture_knowledge_qa.md").read_text(encoding="utf-8")
+
+        required_terms = [
+            "## Q1：向量索引和 embedding 模型如何协作",
+            "embedding 模型负责把文本转换成能够表达语义的数值向量",
+            "向量索引负责保存这些向量并快速找出与查询向量最相近的内容",
+            "PersistentClient",
+            "resources/vector_store/<reposId>",
+            "similarity_search_with_score",
+            "分数越小越相似",
+            "topK",
+            "smlrTrval",
+            "maxCtx",
+            "embedding 模型一致",
+            "设计与实现差异",
+            "可改进方案",
+        ]
+        for item in required_terms:
+            self.assertIn(item, text)
+
+        self.assertIn("[Q1](#q1向量索引和-embedding-模型如何协作)", text)
+        self.assertIn("repos_vector_db.py", text)
+        self.assertIn("dataset_to_vector.py", text)
+        self.assertIn("llm_client_tools.py", text)
+        self.assertIn("ask_to_llm.py", text)
+
 
 if __name__ == "__main__":
     unittest.main()
