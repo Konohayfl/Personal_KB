@@ -28,6 +28,7 @@ class ArchitectureKnowledgeQATest(unittest.TestCase):
             "详细解答",
             "在 WenKB 中的对应关系",
             "Git commit",
+            "代码维护交接文档中追加维护记录",
         ]
         for item in required_terms:
             self.assertIn(item, text)
