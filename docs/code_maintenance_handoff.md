@@ -178,6 +178,13 @@
 - 扩展 `tests/test_rtm_workbook.py`，检查维护记录中的关键修复能够在对应需求行中被检索，并要求关联维护测试文件。
 - 已提交 Git commit `283e2c8`，包含需求跟踪矩阵和对应回归测试。
 
+### 3.20 简历项目经历更新
+
+- 基于 WenKB 当前代码、设计文档和测试基线，整理出面向求职简历的项目总结，覆盖 FastAPI、Vue3/Tauri、SQLite、Chroma、LangChain、多模型配置、文档导入、异步索引、RAG 问答、引用溯源和可靠性维护。
+- 新增 `tools/replace_resume_project.py`，使用 PyMuPDF 在保留原单页 A4 版式的前提下，将 `D:\杨帆.pdf` 中“小众点评”项目替换为 `WenKB 知识库` 项目，保留后续“分布式在线购票系统”内容。
+- 新增 `tests/test_resume_pdf.py`，校验输出文件存在、页面尺寸、项目名称替换、关键技术词和后续项目内容。
+- 输出文件为 `outputs/pdf/杨帆-WenKB.pdf`。
+
 ## 4. 当前未完成事项
 
 以下事项尚未在本轮实现，按风险优先级排列：
@@ -200,6 +207,9 @@
 - `tests/test_architecture_knowledge_qa.py`
 - `tests/test_change_management.py`
 - `tests/test_rtm_workbook.py`
+- `tools/replace_resume_project.py`
+- `tests/test_resume_pdf.py`
+- `outputs/pdf/杨帆-WenKB.pdf`
 
 工作区中另有未跟踪的 `resources/` 和 Excel 临时文件，本轮未修改、未纳入提交。下次继续维护时，应先查看 `git status --short` 和 `git diff`，再区分用户已有修改与本轮改动。
 
@@ -211,7 +221,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-结果为 `Ran 44 tests - OK`。其中本轮新增的 Excel 变更履历回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
+结果为 `Ran 46 tests - OK`，包含本轮新增的简历 PDF 存在性、版式、项目替换和关键内容回归测试；PDF 已通过 `pdfinfo` 单页 A4 检查、PyMuPDF 文本检查和 `pdftoppm` 渲染检查。此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
 ## 7. 下次恢复建议
 
@@ -238,6 +248,8 @@
 
 - 2026-09-06：在 Excel 工作簿“变更履历”中新增第 21、22 条维护记录，分别记录维护事项回写需求基线和 Excel 变更履历完善；将 SUM 汇总行调整至第 25 行，并扩展 `tests/test_rtm_workbook.py` 校验 22 条履历及新汇总公式。
 - 本次 Excel 履历完善已保留原工作簿内嵌图片与工作表结构，输出副本位于 `outputs/rtm-maintenance-final/`。
+
+- 2026-09-06：基于 WenKB 代码与工程文档，将简历中的“小众点评”项目替换为 `WenKB 知识库` 项目；新增 PyMuPDF 替换脚本和 PDF 回归测试，生成 `outputs/pdf/杨帆-WenKB.pdf`，保留单页 A4 版式和后续在线购票项目。
 
 - 2026-09-03：修复 Windows 本地 m3e embedding 因 Torch 动态库和 Git LFS 占位权重导致的向量集合创建失败；固定 `torch==2.3.1`、`fsspec==2024.6.1`，补充模型资源校验、回归测试和操作手册说明。
 
