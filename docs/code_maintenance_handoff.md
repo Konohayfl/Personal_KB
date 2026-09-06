@@ -211,7 +211,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-结果为 `Ran 43 tests - OK`。其中本轮新增的需求跟踪矩阵回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
+结果为 `Ran 44 tests - OK`。其中本轮新增的 Excel 变更履历回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
 ## 7. 下次恢复建议
 
@@ -235,6 +235,9 @@
 - 2026-09-04：新增 [docs/architecture_knowledge_qa.md](architecture_knowledge_qa.md)，用于持续记录后续关于项目架构、技术概念和代码实现的疑问与解答；新增对应文档回归测试，确保记录模板和导航链接完整。
 
 - 2026-09-06：依据本维护记录，将已完成且可追踪的模型配置、知识库清理、索引稳定性、问答失败回落、引用快照、搜索元数据、文档版本、健康检查、安全与兼容性维护事项回写到需求跟踪矩阵对应需求行；保留未完成风险原状；扩展 `tests/test_rtm_workbook.py` 校验关键映射；提交 `283e2c8`。
+
+- 2026-09-06：在 Excel 工作簿“变更履历”中新增第 21、22 条维护记录，分别记录维护事项回写需求基线和 Excel 变更履历完善；将 SUM 汇总行调整至第 25 行，并扩展 `tests/test_rtm_workbook.py` 校验 22 条履历及新汇总公式。
+- 本次 Excel 履历完善已保留原工作簿内嵌图片与工作表结构，输出副本位于 `outputs/rtm-maintenance-final/`。
 
 - 2026-09-03：修复 Windows 本地 m3e embedding 因 Torch 动态库和 Git LFS 占位权重导致的向量集合创建失败；固定 `torch==2.3.1`、`fsspec==2024.6.1`，补充模型资源校验、回归测试和操作手册说明。
 

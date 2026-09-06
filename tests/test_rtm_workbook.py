@@ -55,28 +55,53 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             self.assertTrue(self.rtm.cell(row, 10).value)
             self.assertTrue(self.rtm.cell(row, 11).value)
 
-    def test_change_history_has_twenty_numbered_records_and_key_changes(self):
+    def test_change_history_has_twenty_two_numbered_records_and_key_changes(self):
         records = []
-        for row in range(3, 23):
+        for row in range(3, 25):
             sequence = self.history.cell(row, 2).value
             self.assertEqual(row - 2, sequence)
             change_date = self.history.cell(row, 3).value
             self.assertIsInstance(change_date, (date, datetime))
             normalized_date = change_date.date() if isinstance(change_date, datetime) else change_date
-            self.assertLessEqual(normalized_date, date(2026, 9, 4))
+            self.assertLessEqual(normalized_date, date(2026, 9, 6))
             self.assertTrue(self.history.cell(row, 4).value)
             self.assertTrue(self.history.cell(row, 5).value)
             self.assertEqual(self.history.cell(row, 12).value, 25)
             records.append(str(self.history.cell(row, 4).value))
 
         content = "\n".join(records)
-        for keyword in ("健康检查", "引用", "AES", "OpenAI", "embedding", "架构与知识点"):
+        for keyword in (
+            "健康检查",
+            "引用",
+            "AES",
+            "OpenAI",
+            "embedding",
+            "架构与知识点",
+            "283e2c8",
+            "变更履历",
+        ):
             self.assertIn(keyword, content)
 
     def test_history_summary_and_workbook_calculation_mode_are_present(self):
-        self.assertEqual(self.history.cell(23, 2).value, "SUM")
-        self.assertEqual(self.history.cell(23, 12).value, 25)
+        self.assertEqual(self.history.cell(25, 2).value, "SUM")
+        self.assertEqual(self.history.cell(25, 12).value, 25)
+        self.assertEqual(self.history.cell(25, 13).value, "=SUM(M3:M24)")
         self.assertTrue(self.workbook.calculation.fullCalcOnLoad)
+
+    def test_new_maintenance_history_records_are_present(self):
+        self.assertEqual(self.history.cell(23, 2).value, 21)
+        self.assertEqual(self.history.cell(24, 2).value, 22)
+        self.assertEqual(self.history.cell(23, 3).value, datetime(2026, 9, 6))
+        self.assertEqual(self.history.cell(24, 3).value, datetime(2026, 9, 6))
+
+        first_change = str(self.history.cell(23, 4).value)
+        second_change = str(self.history.cell(24, 4).value)
+        self.assertIn("设计用RTM", first_change)
+        self.assertIn("283e2c8", first_change)
+        self.assertIn("未完成鉴权", first_change)
+        self.assertIn("Excel 需求跟踪矩阵", second_change)
+        self.assertEqual(self.history.cell(23, 12).value, 25)
+        self.assertEqual(self.history.cell(24, 12).value, 25)
 
     def test_maintenance_records_are_reflected_in_requirement_details(self):
         expected_keywords = {
