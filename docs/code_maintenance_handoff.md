@@ -171,6 +171,13 @@
 - 扩展 `tests/test_architecture_knowledge_qa.py`，校验 Q1 的核心概念、代码映射、检索参数和注意事项均存在。
 - 修正 `tests/test_architecture_design.py` 中与当前需求文档不一致的章节断言，将已不存在的“现状调研”更新为实际章节“参考对象”。
 
+### 3.19 维护记录回写需求跟踪矩阵
+
+- 根据本交接记录中已经完成且可映射到需求基线的维护事项，补充“设计用RTM”中 FR-001、FR-002、FR-003、FR-004、FR-009、FR-014、FR-015、FR-016、FR-017、NFR-001、NFR-003、NFR-004、NFR-005、NFR-006 和 NFR-007 的详细说明与实现/测试依据。
+- 保留原有工作表、状态标识和变更履历，仅增强受影响需求行的追踪证据；未完成的鉴权、上传校验和任务生命周期风险仍保留在“当前未完成事项”中，不标记为已实现。
+- 扩展 `tests/test_rtm_workbook.py`，检查维护记录中的关键修复能够在对应需求行中被检索，并要求关联维护测试文件。
+- 已提交 Git commit `283e2c8`，包含需求跟踪矩阵和对应回归测试。
+
 ## 4. 当前未完成事项
 
 以下事项尚未在本轮实现，按风险优先级排列：
@@ -189,8 +196,10 @@
 - `docs/architecture_knowledge_qa.md`
 - `docs/change_management.md`
 - `docs/code_maintenance_handoff.md`
+- `第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx`
 - `tests/test_architecture_knowledge_qa.py`
 - `tests/test_change_management.py`
+- `tests/test_rtm_workbook.py`
 
 工作区中另有未跟踪的 `resources/` 和 Excel 临时文件，本轮未修改、未纳入提交。下次继续维护时，应先查看 `git status --short` 和 `git diff`，再区分用户已有修改与本轮改动。
 
@@ -202,7 +211,7 @@
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-结果为 `Ran 42 tests - OK`。其中本轮新增或更新的文档回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
+结果为 `Ran 43 tests - OK`。其中本轮新增的需求跟踪矩阵回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
 ## 7. 下次恢复建议
 
@@ -224,6 +233,8 @@
 - 2026-09-04：依据需求分析、概要设计、详细设计、数据库设计、接口设计、测试计划、部署运维和本维护文档，重建《第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx》；矩阵覆盖 18 项功能需求与 7 项非功能需求，并补录 2026-09-02 至 2026-09-04 的 20 条现有变更记录；新增 Excel 结构与内容回归测试。
 
 - 2026-09-04：新增 [docs/architecture_knowledge_qa.md](architecture_knowledge_qa.md)，用于持续记录后续关于项目架构、技术概念和代码实现的疑问与解答；新增对应文档回归测试，确保记录模板和导航链接完整。
+
+- 2026-09-06：依据本维护记录，将已完成且可追踪的模型配置、知识库清理、索引稳定性、问答失败回落、引用快照、搜索元数据、文档版本、健康检查、安全与兼容性维护事项回写到需求跟踪矩阵对应需求行；保留未完成风险原状；扩展 `tests/test_rtm_workbook.py` 校验关键映射；提交 `283e2c8`。
 
 - 2026-09-03：修复 Windows 本地 m3e embedding 因 Torch 动态库和 Git LFS 占位权重导致的向量集合创建失败；固定 `torch==2.3.1`、`fsspec==2024.6.1`，补充模型资源校验、回归测试和操作手册说明。
 
