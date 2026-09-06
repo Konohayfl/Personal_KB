@@ -38,11 +38,16 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             *(f"FR-{index:03d}" for index in range(1, 19)),
             *(f"NFR-{index:03d}" for index in range(1, 8)),
         ]
-        actual_ids = [self.rtm.cell(row, 2).value for row in range(6, 31)]
+        requirement_rows = [
+            row
+            for row in range(1, self.rtm.max_row + 1)
+            if self.rtm.cell(row, 2).value in expected_ids
+        ]
+        actual_ids = [self.rtm.cell(row, 2).value for row in requirement_rows]
         self.assertEqual(expected_ids, actual_ids)
 
         allowed_statuses = {"○", "△", "×", "N/A"}
-        for row in range(6, 31):
+        for row in requirement_rows:
             self.assertTrue(self.rtm.cell(row, 5).value)
             self.assertTrue(self.rtm.cell(row, 6).value)
             for column in (7, 8, 9):
@@ -72,6 +77,36 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
         self.assertEqual(self.history.cell(23, 2).value, "SUM")
         self.assertEqual(self.history.cell(23, 12).value, 25)
         self.assertTrue(self.workbook.calculation.fullCalcOnLoad)
+
+    def test_maintenance_records_are_reflected_in_requirement_details(self):
+        expected_keywords = {
+            "FR-001": (("AES", "WENKB_AES_KEY"), "test_code_maintenance.py"),
+            "FR-004": (("embedding 模型", "删除时清理"), "test_code_maintenance.py"),
+            "FR-009": (("数据库版本 5", "Git LFS"), "test_code_maintenance.py"),
+            "FR-014": (("兜底消息", "持久化"), "test_code_maintenance.py"),
+            "FR-015": (("引用快照", "稳定来源标识"), "test_code_maintenance.py"),
+            "FR-016": (("dtsetId", "元数据缺失"), "test_code_maintenance.py"),
+            "FR-017": (("版本级联清理", "权限校验"), "test_code_maintenance.py"),
+            "NFR-001": (("GET /health", "数据库健康检查"), "test_code_maintenance.py"),
+            "NFR-003": (("失败回落", "资源完整性提示"), "test_code_maintenance.py"),
+            "NFR-004": (("AES 参数校验", "访问控制"), "test_code_maintenance.py"),
+            "NFR-005": (("变更管理", "需求跟踪矩阵"), "tests/* documentation tests"),
+            "NFR-006": (("六类 OpenAI 兼容供应商", "embedding 依赖校验"), "test_code_maintenance.py"),
+            "NFR-007": (("torch/fsspec", "Git LFS 模型权重"), "test_code_maintenance.py"),
+        }
+        row_by_id = {
+            self.rtm.cell(row, 2).value: row
+            for row in range(1, self.rtm.max_row + 1)
+            if self.rtm.cell(row, 2).value
+        }
+
+        for requirement_id, keywords in expected_keywords.items():
+            with self.subTest(requirement_id=requirement_id):
+                required_keywords, test_reference = keywords
+                detail = str(self.rtm.cell(row_by_id[requirement_id], 6).value)
+                for keyword in required_keywords:
+                    self.assertIn(keyword, detail)
+                self.assertIn(test_reference, detail)
 
 
 if __name__ == "__main__":
