@@ -50,7 +50,11 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             for row in range(1, self.rtm.max_row + 1)
             if self.rtm.cell(row, 2).value in expected_ids
         ]
-        actual_ids = [self.rtm.cell(row, 2).value for row in requirement_rows]
+        actual_ids = []
+        for row in requirement_rows:
+            requirement_id = self.rtm.cell(row, 2).value
+            if requirement_id not in actual_ids:
+                actual_ids.append(requirement_id)
         self.assertEqual(expected_ids, actual_ids)
 
         allowed_statuses = {"○", "△", "×", "N/A"}
@@ -112,12 +116,12 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
     def test_maintenance_records_are_reflected_in_requirement_details(self):
         expected_keywords = {
             "FR-001": ("AES", "WENKB_AES_KEY"),
-            "FR-004": ("embedding 模型", "删除时清理"),
+            "FR-004": ("embedding 模型", "删除后清理"),
             "FR-009": ("数据库版本 5", "Git LFS"),
             "FR-014": ("兜底消息", "持久化"),
             "FR-015": ("引用快照", "稳定来源标识"),
             "FR-016": ("dtsetId", "元数据缺失"),
-            "FR-017": ("版本级联清理", "权限校验"),
+            "FR-017": ("级联清理文档版本", "访问权限"),
             "NFR-001": ("GET /health", "数据库健康检查"),
             "NFR-003": ("失败回落", "资源完整性提示"),
             "NFR-004": ("AES 参数校验", "访问控制"),
@@ -125,19 +129,21 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             "NFR-006": ("六类 OpenAI 兼容供应商", "embedding 依赖校验"),
             "NFR-007": ("torch/fsspec", "Git LFS 模型权重"),
         }
-        row_by_id = {
-            self.rtm.cell(row, 2).value: row
-            for row in range(1, self.rtm.max_row + 1)
-            if self.rtm.cell(row, 2).value
-        }
+        details_by_id = {}
+        for row in range(1, self.rtm.max_row + 1):
+            requirement_id = self.rtm.cell(row, 2).value
+            if requirement_id:
+                details_by_id.setdefault(requirement_id, []).append(
+                    str(self.rtm.cell(row, 6).value)
+                )
 
         for requirement_id, keywords in expected_keywords.items():
             with self.subTest(requirement_id=requirement_id):
-                detail = str(self.rtm.cell(row_by_id[requirement_id], 6).value)
+                detail = "\n".join(details_by_id[requirement_id])
                 for keyword in keywords:
                     self.assertIn(keyword, detail)
 
-    def test_design_rtm_details_omit_basis_text_and_refine_broad_categories(self):
+    def test_design_rtm_details_omit_basis_text_and_split_broad_categories(self):
         requirement_rows = [
             row
             for row in range(1, self.rtm.max_row + 1)
@@ -149,14 +155,37 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             if self.rtm.cell(row, 6).value
         )
         self.assertNotIn("依据：", detail_text)
+
+        fr004_rows = [row for row in requirement_rows if self.rtm.cell(row, 2).value == "FR-004"]
+        fr017_rows = [row for row in requirement_rows if self.rtm.cell(row, 2).value == "FR-017"]
+        self.assertEqual(5, len(fr004_rows))
+        self.assertEqual(3, len(fr017_rows))
+
+        fr004_categories = [self.rtm.cell(row, 5).value for row in fr004_rows]
         self.assertEqual(
-            self.rtm["E8"].value,
-            "知识库创建、编辑、查看、删除与关联清理",
+            [
+                "知识库创建",
+                "知识库查看",
+                "知识库编辑",
+                "知识库删除",
+                "向量集合与关联清理",
+            ],
+            fr004_categories,
         )
+        fr017_categories = [self.rtm.cell(row, 5).value for row in fr017_rows]
         self.assertEqual(
-            self.rtm["E21"].value,
-            "文档集/文档维护、版本快照与转数据集",
+            [
+                "文档集创建与维护",
+                "文档维护与版本快照",
+                "文档转数据集",
+            ],
+            fr017_categories,
         )
+
+        for row in [*fr004_rows, *fr017_rows]:
+            self.assertTrue(self.rtm.cell(row, 6).value)
+            self.assertEqual("杨帆", self.rtm.cell(row, 10).value)
+            self.assertEqual("杨帆", self.rtm.cell(row, 11).value)
 
 
 if __name__ == "__main__":
