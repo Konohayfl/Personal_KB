@@ -1,7 +1,7 @@
 # WenKB 代码维护交接记录
 
 版本：v1.2
-日期：2026-09-04
+日期：2026-09-08
 状态：本轮维护已完成
 
 ## 1. 交接目的
@@ -178,6 +178,13 @@
 - 扩展 `tests/test_rtm_workbook.py`，检查维护记录中的关键修复能够在对应需求行中被检索，并要求关联维护测试文件。
 - 已提交 Git commit `283e2c8`，包含需求跟踪矩阵和对应回归测试。
 
+### 3.20 需求跟踪矩阵最终文件整理
+
+- 删除根目录重复的《第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx》，将 `outputs/rtm-maintenance-final/` 下的工作簿作为当前唯一交付版本。
+- 清理“设计用RTM”中各需求“详细说明”字段里的“依据”段落，仅保留需求与实现含义本身，避免把文档和代码引用混入说明正文。
+- 将“知识库管理”细化为“知识库创建、编辑、查看、删除与关联清理”，将“文档集管理”细化为“文档集/文档维护、版本快照与转数据集”。
+- 更新 `tests/test_rtm_workbook.py`，校验最终输出路径、根目录重复副本删除、详细说明不含“依据：”以及细化后的小分类文本。
+
 ## 4. 当前未完成事项
 
 以下事项尚未在本轮实现，按风险优先级排列：
@@ -192,16 +199,11 @@
 
 本轮文档维护涉及以下文件：
 
-- `AGENTS.md`
-- `docs/architecture_knowledge_qa.md`
-- `docs/change_management.md`
 - `docs/code_maintenance_handoff.md`
-- `第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx`
-- `tests/test_architecture_knowledge_qa.py`
-- `tests/test_change_management.py`
+- `outputs/rtm-maintenance-final/第14小组_基于大模型的个人知识库系统_需求跟踪矩阵.xlsx`
 - `tests/test_rtm_workbook.py`
 
-工作区中另有未跟踪的 `resources/` 和 Excel 临时文件，本轮未修改、未纳入提交。下次继续维护时，应先查看 `git status --short` 和 `git diff`，再区分用户已有修改与本轮改动。
+根目录重复工作簿已删除。工作区中另有未跟踪的 `resources/`，本轮未修改、未纳入提交。下次继续维护时，应先查看 `git status --short` 和 `git diff`，再区分用户已有修改与本轮改动。
 
 ## 6. 验证状态
 
@@ -213,6 +215,14 @@
 
 结果为 `Ran 44 tests - OK`。其中本轮新增的 Excel 变更履历回归测试通过；此前已验证的 `.venv\Scripts\python.exe -m pip check`、`.venv\Scripts\python.exe -m compileall -q wenkb-server/server wenkb-server/app.py` 和前端 `npm run build` 结果仍作为历史基线保留。前端构建仍有 `eval`、源码映射和多个 chunk 超过 500 KB 的既有告警。
 
+2026-09-08 本轮需求跟踪矩阵整理已完成以下验证：
+
+```powershell
+python -m unittest tests.test_rtm_workbook
+```
+
+结果为通过：RTM 专项测试 7 项、全量测试 45 项均通过。另使用 Artifact Tool 对“设计用RTM”执行公式错误扫描，结果为 0 个匹配，并重新渲染工作表进行版式检查。
+
 ## 7. 下次恢复建议
 
 1. 先运行 `git status --short` 和 `git diff --stat`，确认没有新的用户改动。
@@ -223,6 +233,8 @@
 ## 8. 维护记录
 
 本节集中保存原记录在 `AGENTS.md` 中的全部维护条目，并持续追加新的维护、审查和验证记录。条目按时间倒序排列；详细实现状态见“已完成工作”，后续行动见“当前未完成事项”。
+
+- 2026-09-08：整理需求跟踪矩阵最终交付文件，删除根目录重复工作簿，将测试基线切换到 `outputs/rtm-maintenance-final/`；清理“设计用RTM”详细说明中的依据段落，并细化知识库与文档集相关小分类；更新 RTM 回归测试并完成工作簿错误扫描、渲染和单元测试验证。
 
 - 2026-09-04：完成维护记录集中化，将 `AGENTS.md` 中的历史维护条目合并至本文档；补充项目进度审查顺序、进度追踪字段和交付前审查门禁，明确本文档作为项目进度主动审查与追踪的唯一记录源；同步更新文档回归测试。
 
