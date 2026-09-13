@@ -126,15 +126,15 @@
         <div class="kb-search-info">
           <n-icon class="iconfont-kb icon-knowledge"></n-icon>
           <n-dropdown trigger="hover" :options="reposOptions" :on-select="onReposSelect">
-            <span title="切换对话知识库">{{ selectedRepos.reposNm }}</span>
+            <span title="切换搜索知识库">{{ selectedRepos.reposNm || '选择知识库' }}</span>
           </n-dropdown>
           <n-icon class="iconfont icon-unfoldmore"></n-icon>
         </div>
         <div class="kb-search-input">
-          <n-input v-model:value="inputValue" type="textarea" autofocus placeholder="请输入搜索文本&#10;搜索 [Enter]/换行 [Ctrl + Enter]" @keydown="onInputKeyDown"
+          <n-input v-model:value="inputValue" type="textarea" placeholder="想找什么资料？&#10;输入关键词或完整问题&#10;Enter 搜索 · Ctrl + Enter 换行" @keydown="onInputKeyDown"
             :autosize="{
-              minRows: 10,
-              maxRows: 10
+              minRows: 6,
+              maxRows: 6
             }"
           />
         </div>
@@ -197,7 +197,11 @@
               </n-thing>
             </n-list-item>
           </n-list>
-          <n-empty v-if="resultList.length === 0"/>
+          <div v-if="resultList.length === 0 && !loading" class="workspace-welcome">
+            <WorkspaceIcon name="search" /><h1>{{ hasSearched ? '没有找到相关内容' : '从资料中，找到答案' }}</h1>
+            <p>{{ hasSearched ? '试试其他关键词，并确认资料已启用且索引就绪。' : '选择知识库，输入关键词或问题，搜索已完成索引的资料。' }}</p>
+            <n-button v-if="!selectedReposId" type="primary" @click="router.push('/main/repository')">前往知识库</n-button>
+          </div>
         </n-scrollbar>
         <n-spin v-if="loading"></n-spin>
       </n-layout-content>
@@ -213,9 +217,11 @@
   import { localRead, localSave } from '@/libs/tools'
   import { CURRENT_REPOS_ID_KEY } from '@/libs/enum'
   import { isEmpty } from '@/libs/tools'
+  import WorkspaceIcon from '@/components/WorkspaceIcon.vue'
 
   export default defineComponent({
     components: {
+      WorkspaceIcon,
     },
     setup() {
       const dialog = useDialog()
@@ -224,6 +230,7 @@
 	    const { proxy, ctx } = getCurrentInstance()
       const router = useRouter()
       const loading = ref(false)
+      const hasSearched = ref(false)
       const inputValue = ref('')
       const selectedReposId = ref('')
       const reposList = ref([])
@@ -256,14 +263,7 @@
             selectedReposId.value = reposList.value[0].reposId
           } else {
             selectedReposId.value = ''
-            dialogConfirm(dialog, {
-              title: '创建知识库确认',
-              content: '您还没有创建知识库，是否去创建一个知识库？',
-              type: 'warning',
-              onPositiveClick: (e, dialog) => {
-                router.push(`/main/repository`)
-              }
-            })
+
           }
         }).catch(err => {
           console.error(err)
@@ -308,6 +308,7 @@
           return
         }
         loading.value = true
+        hasSearched.value = true
         proxy.$api.post('/knb/search', { reposId: selectedReposId.value, searchTxt: inputValue.value, noHist }).then(res => {
           resultList.value = res.data || []
           initHistList()
@@ -348,7 +349,7 @@
         })
       }
       return {
-        loading,
+        loading, hasSearched, router,
         inputValue,
         selectedRepos,
         reposOptions,

@@ -10,6 +10,18 @@ export const useTheme = () => {
     let colors = similarColors(primaryColor.value, 3, 50)
     return {
       common: {
+        fontFamily: '"Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+        borderRadius: '8px',
+        borderRadiusSmall: '5px',
+        fontSize: '14px',
+        heightMedium: '40px',
+        heightLarge: '44px',
+        ...(themeType.value?.name !== 'dark' ? {
+          bodyColor: '#fdfdfb', cardColor: '#ffffff', modalColor: '#ffffff',
+          textColor1: '#202a29', textColor2: '#48534f', textColor3: '#737d7b',
+          borderColor: '#e3e8e3', dividerColor: '#e9ede8',
+          tableHeaderColor: '#f5f7f3', hoverColor: '#f1f5ef'
+        } : {}),
         primaryColor: primaryColor.value,
         primaryColorHover: colors[0],
         primaryColorPressed: colors[1],
@@ -18,8 +30,13 @@ export const useTheme = () => {
         primaryColorOpacity2: modifyColorAlpha(primaryColor.value, 0.72),
         primaryColorOpacity3: modifyColorAlpha(primaryColor.value, 0.38),
         primaryColorOpacity4: modifyColorAlpha(primaryColor.value, 0.24),
-        primaryColorOpacity5: modifyColorAlpha(primaryColor.value, 0.18)
-      }
+        primaryColorOpacity5: modifyColorAlpha(primaryColor.value, 0.10)
+      },
+      Button: { fontWeight: '500', borderRadiusMedium: '8px', borderRadiusLarge: '8px' },
+      Card: { borderRadius: '10px' },
+      Input: { borderRadius: '8px' },
+      Menu: { borderRadius: '8px', itemHeight: '44px' },
+      Dialog: { borderRadius: '12px' }
     }
   })
   const themeType = ref(null)

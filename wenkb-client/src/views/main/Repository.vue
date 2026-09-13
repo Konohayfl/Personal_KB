@@ -1,65 +1,21 @@
-<style lang="less">
-.kb-repos {
-  height: 100%;
-  .n-card-header {
-    .n-card-header__main {
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      .n-icon {
-        font-size: 22px;
-        // position: relative;
-        // top: 1.5px;
-        margin-right: 4px;
-        color: var(--primary-color);
-      }
-    }
-    .n-card-header__extra {
-      .n-button {
-        margin-left: 10px;
-      }
-    }
-  }
-}
-</style>
-
 <template>
-  <n-card class="kb-repos" :bordered="false">
-    <template #header>
-      <n-icon class="iconfont-kb icon-knowledge"></n-icon>我的知识库
-    </template>
-    <template #header-extra>
-      <n-input v-model:value="inputValue" placeholder="输入知识库名称搜索" autofocus :on-input="onInputChange">
-        <template #prefix>
-          <n-icon class="iconfont icon-magnify"></n-icon>
-        </template>
-      </n-input>
-      <n-button type="primary" @click="addForm"><n-icon class="iconfont icon-plus"></n-icon>&nbsp;新建</n-button>
-    </template>
-    <card-list :dataList="repositoryList" idKey="reposId" titleKey="reposNm" descKey="reposDesc" defaultDesc="该知识库还没有介绍~"
-      @on-option-select="onOptionSelect" @on-item-click="turnToDetail"
-    />
-    <n-empty v-if="repositoryList.length === 0">
-      <template #extra>
-        <n-button type="primary" @click="addForm"><n-icon class="iconfont icon-plus"></n-icon>&nbsp;新建</n-button>
-      </template>
-    </n-empty>
-  </n-card>
+  <LibraryPage class="kb-repos" title="我的知识库" subtitle="整理资料，让知识随时可用。" noun="知识库" create-label="新建知识库" empty-description="把文档和网页归入一个主题，导入资料后即可开始搜索和问答。" :items="sourceRepositoryList" id-key="reposId" title-key="reposNm" desc-key="reposDesc" icon="folder" :loading="loading" :error="loadError" @create="addForm" @open="turnToDetail" @option="onOptionSelect" @retry="initData" />
 </template>
+
 <script>
   import { defineComponent, ref, getCurrentInstance } from 'vue'
   import { useRouter } from 'vue-router'
   import { useDialog } from 'naive-ui'
-  import _ from 'lodash'
+
   import { renderIconfontIcon, dialogCreate, dialogConfirm } from '@/libs/utils'
   import { isEmpty, localSave } from '@/libs/tools'
   import { CURRENT_REPOS_ID_KEY } from '@/libs/enum'
-  import CardList from '@/views/main/components/CardList.vue'
+  import LibraryPage from '@/views/main/components/LibraryPage.vue'
   import RepositoryForm from './repository/form/RepositoryForm.vue'
 
   export default defineComponent({
     components: {
-      CardList
+      LibraryPage
     },
     setup() {
       const dialog = useDialog()
@@ -67,21 +23,23 @@
 	    const { proxy, ctx } = getCurrentInstance()
       const router = useRouter()
       const sourceRepositoryList = ref([])
-      const repositoryList = ref([])
-      const inputValue = ref('')
+      const loading = ref(false)
+      const loadError = ref(false)
       const initData = () => {
+        loading.value = true
+        loadError.value = false
         proxy.$api.post('/knb/repository/my/list').then(res => {
           sourceRepositoryList.value = res.data || []
-          repositoryList.value = sourceRepositoryList.value
         }).catch(err => {
+          loadError.value = true
           console.error(err)
-        })
+        }).finally(() => { loading.value = false })
       }
       initData()
       const addForm = () => {
         dialogCreate(dialog, {
           title: `新增知识库`,
-          style: 'width: 50%;',
+          style: 'width: min(640px, calc(100vw - 32px));',
           maskClosable: false,
           icon: () => renderIconfontIcon('iconfont-kb icon-knowledge', { size: '28px' }),
           onPositiveClick: (data, e, dialog) => {
@@ -99,7 +57,7 @@
         if (key === 'edit') {
           dialogCreate(dialog, {
             title: `修改知识库`,
-            style: 'width: 50%;',
+            style: 'width: min(640px, calc(100vw - 32px));',
             maskClosable: false,
             icon: () => renderIconfontIcon('iconfont-kb icon-knowledge', { size: '28px' }),
             onPositiveClick: (data, e, dialog) => {
@@ -133,24 +91,14 @@
           })
         }
       }
-      const onInputChange = _.debounce((value) => {
-        if (isEmpty(value)) {
-          repositoryList.value = sourceRepositoryList.value
-          return
-        }
-        repositoryList.value = sourceRepositoryList.value.filter(item => {
-          return (item.reposNm.toLowerCase()).indexOf(value.toLowerCase()) > -1
-        })
-      }, 500)
       const turnToDetail = (reposId) => {
         localSave(CURRENT_REPOS_ID_KEY, reposId)
         router.push(`/main/repository/detail?id=${reposId}`)
       }
       return {
-        inputValue,
-        repositoryList,
+        sourceRepositoryList, loading, loadError, initData,
         addForm, onOptionSelect,
-        onInputChange, turnToDetail
+        turnToDetail
       }
     }
   })

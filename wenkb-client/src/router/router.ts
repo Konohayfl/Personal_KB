@@ -18,11 +18,12 @@ const routes = [
     },
     {
         path: '/',
-        redirect: '/main/chat',
+        redirect: '/main/repository',
         children: [
             {
                 path: '/main',
                 component: Main,
+                redirect: '/main/repository',
                 children: [
                     {
                         path: '/main/chat',

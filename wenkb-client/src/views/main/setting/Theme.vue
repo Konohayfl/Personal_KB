@@ -16,7 +16,7 @@
       </n-radio-group>
     </n-form-item>
     <n-form-item label="颜色" path="color">
-      <n-color-picker v-model:value="formData.color" :show-alpha="false" style="width: 170px;" :swatches="['#2587F7', '#6E21FF', '#832203', '#389E3E', '#AC4A20', '#D57F3F', '#FF6452', '#FF6E0B']" />
+      <n-color-picker v-model:value="formData.color" :show-alpha="false" style="width: 170px;" :swatches="['#285847', '#2587F7', '#6E21FF', '#832203', '#389E3E', '#AC4A20', '#D57F3F', '#FF6452']" />
     </n-form-item>
     <n-form-item label="导航" path="navigation">
       <n-radio-group v-model:value="formData.navigation" name="radiobuttongroup2">

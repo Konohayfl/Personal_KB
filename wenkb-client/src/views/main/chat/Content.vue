@@ -42,7 +42,7 @@
           maxRows: 5
         }"
       />
-      <n-button @click="sendMessage" :disabled="!Boolean(inputValue)" type="primary" circle><n-icon class="iconfont icon-send"></n-icon></n-button>
+      <n-button @click="sendMessage" :disabled="!Boolean(inputValue)" type="primary" circle aria-label="发送消息" title="发送消息"><n-icon class="iconfont icon-send"></n-icon></n-button>
     </div>
   </div>
 </template>

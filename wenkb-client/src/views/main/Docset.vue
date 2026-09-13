@@ -1,62 +1,20 @@
-<style lang="less">
-.kb-docset {
-  height: 100%;
-  .n-card-header {
-    .n-card-header__main {
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      .n-icon {
-        font-size: 22px;
-        margin-right: 4px;
-        color: var(--primary-color);
-      }
-    }
-    .n-card-header__extra {
-      .n-button {
-        margin-left: 10px;
-      }
-    }
-  }
-}
-</style>
-
 <template>
-  <n-card class="kb-docset" :bordered="false">
-    <template #header>
-      <n-icon class="iconfont-kb icon-docset"></n-icon>我的文档库
-    </template>
-    <template #header-extra>
-      <n-input v-model:value="inputValue" placeholder="输入文档集名称搜索" autofocus :on-input="onInputChange">
-        <template #prefix>
-          <n-icon class="iconfont icon-magnify"></n-icon>
-        </template>
-      </n-input>
-      <n-button type="primary" @click="addForm"><n-icon class="iconfont icon-plus"></n-icon>&nbsp;新建</n-button>
-    </template>
-    <card-list :dataList="docsetList" idKey="setId" titleKey="setNm" descKey="setDesc" defaultDesc="该文档集还没有介绍~"
-      @on-option-select="onOptionSelect" @on-item-click="turnToDetail"
-    />
-    <n-empty v-if="docsetList.length === 0">
-      <template #extra>
-        <n-button type="primary" @click="addForm"><n-icon class="iconfont icon-plus"></n-icon>&nbsp;新建</n-button>
-      </template>
-    </n-empty>
-  </n-card>
+  <LibraryPage class="kb-docset" title="我的文档库" subtitle="记录想法，沉淀每一份有价值的内容。" noun="文档集" create-label="新建文档集" empty-description="将笔记、草稿和项目文档整理到一起，随时编辑并保留版本。" :items="sourceDocsetList" id-key="setId" title-key="setNm" desc-key="setDesc" icon="document" :loading="loading" :error="loadError" @create="addForm" @open="turnToDetail" @option="onOptionSelect" @retry="initData" />
 </template>
+
 <script>
   import { defineComponent, ref, getCurrentInstance } from 'vue'
   import { useRouter } from 'vue-router'
   import { useDialog } from 'naive-ui'
-  import _ from 'lodash'
+
   import { renderIconfontIcon, dialogCreate, dialogConfirm } from '@/libs/utils'
   import { isEmpty } from '@/libs/tools'
-  import CardList from '@/views/main/components/CardList.vue'
+  import LibraryPage from '@/views/main/components/LibraryPage.vue'
   import DocsetForm from './docset/form/DocsetForm.vue'
 
   export default defineComponent({
     components: {
-      CardList
+      LibraryPage
     },
     setup() {
       const dialog = useDialog()
@@ -64,21 +22,23 @@
 	    const { proxy, ctx } = getCurrentInstance()
       const router = useRouter()
       const sourceDocsetList = ref([])
-      const docsetList = ref([])
-      const inputValue = ref('')
+      const loading = ref(false)
+      const loadError = ref(false)
       const initData = () => {
+        loading.value = true
+        loadError.value = false
         proxy.$api.post('/doc/docset/my/list').then(res => {
           sourceDocsetList.value = res.data || []
-          docsetList.value = sourceDocsetList.value
         }).catch(err => {
+          loadError.value = true
           console.error(err)
-        })
+        }).finally(() => { loading.value = false })
       }
       initData()
       const addForm = () => {
         dialogCreate(dialog, {
           title: `新增文档集`,
-          style: 'width: 50%;',
+          style: 'width: min(640px, calc(100vw - 32px));',
           maskClosable: false,
           icon: () => renderIconfontIcon('iconfont-kb icon-docset', { size: '28px' }),
           onPositiveClick: (data, e, dialog) => {
@@ -96,7 +56,7 @@
         if (key === 'edit') {
           dialogCreate(dialog, {
             title: `修改文档集`,
-            style: 'width: 50%;',
+            style: 'width: min(640px, calc(100vw - 32px));',
             maskClosable: false,
             icon: () => renderIconfontIcon('iconfont-kb icon-docset', { size: '28px' }),
             onPositiveClick: (data, e, dialog) => {
@@ -129,23 +89,13 @@
           })
         }
       }
-      const onInputChange = _.debounce((value) => {
-        if (isEmpty(value)) {
-          docsetList.value = sourceDocsetList.value
-          return
-        }
-        docsetList.value = sourceDocsetList.value.filter(item => {
-          return (item.setNm.toLowerCase()).indexOf(value.toLowerCase()) > -1
-        })
-      }, 500)
       const turnToDetail = (setId) => {
         router.push(`/main/docset/detail?id=${setId}`)
       }
       return {
-        inputValue,
-        docsetList,
+        sourceDocsetList, loading, loadError, initData,
         addForm, onOptionSelect,
-        onInputChange, turnToDetail
+        turnToDetail
       }
     }
   })

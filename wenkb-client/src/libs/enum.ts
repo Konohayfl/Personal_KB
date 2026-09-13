@@ -1,8 +1,9 @@
-export const THEME_TYPE_KEY = 'theme'
-export const THEME_COLOR_KEY = 'color'
-export const TEME_NAVIGATION_KEY = 'navigation'
+// New appearance defaults; keep legacy preferences stored without overwriting them.
+export const THEME_TYPE_KEY = 'wenkb.appearance.v2.theme'
+export const THEME_COLOR_KEY = 'wenkb.appearance.v2.color'
+export const TEME_NAVIGATION_KEY = 'wenkb.appearance.v2.navigation'
 export const DEFAULT_THEME_TYPE = 'light'
-export const DEFAULT_THEME_COLOR = '#2587F7'
+export const DEFAULT_THEME_COLOR = '#285847'
 export const DEFAULT_THEME_NAVIGATION = 'default'
 export const CURRENT_REPOS_ID_KEY = 'current_repos_id'
 

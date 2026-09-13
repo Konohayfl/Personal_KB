@@ -17,7 +17,7 @@
 
 <template>
   <n-layout class="kb-setting" has-sider>
-    <n-layout-sider bordered width="210px" content-style="padding: 24px;">
+    <n-layout-sider bordered :width="190" content-style="padding: 24px 16px;">
       <n-menu
         v-model:value="activeKey"
         :options="menuOptions"
@@ -26,6 +26,7 @@
       />
     </n-layout-sider>
     <n-layout-content content-style="padding: 24px;">
+      <header class="workspace-section-title"><h1>{{ activeKey === 'theme' ? '外观设置' : '模型设置' }}</h1><p>{{ activeKey === 'theme' ? '让工作空间更适合你的使用习惯。' : '连接模型服务，为知识检索和对话做好准备。' }}</p></header>
       <theme v-if="activeKey==='theme'" />
       <team v-if="activeKey==='team'" />
       <user v-if="activeKey === 'userinfo'" />

@@ -1,82 +1,77 @@
 <style lang="less">
-@import url('./main.less');
+@import url('./workspace.less');
 </style>
 
 <template>
-  <n-layout has-sider class="kb-main">
-    <n-layout-sider :class="`kb-main-sider kb-navi-${naviType}`" content-style="padding: 10px;" width="100" collapse-mode="transform" :collapsed-width="0" show-trigger="bar">
-      <div class="kb-logo">
-        <logo />
+  <div class="kb-main" :class="`kb-navi-${naviType}`">
+    <a class="workspace-skip" href="#workspace-content" @click.prevent="$refs.content.focus()">跳到内容</a>
+    <aside class="workspace-sidebar" aria-label="工作空间侧栏">
+      <router-link to="/main/repository" class="workspace-brand" aria-label="WenKB 知识库首页">
+        <WorkspaceIcon name="book" />
+        <span><strong>WenKB</strong><small>个人知识空间</small></span>
+      </router-link>
+      <nav class="workspace-nav" aria-label="主导航">
+        <router-link v-for="item in workspaceNav" :key="item.key" :to="`/main/${item.key}`" :class="{ active: activeKey === item.key }" :aria-current="activeKey === item.key ? 'page' : undefined" :title="item.label" :aria-label="item.label">
+          <WorkspaceIcon :name="item.icon" /><span>{{ item.label }}</span>
+        </router-link>
+      </nav>
+      <div class="workspace-sidebar-bottom">
+        <router-link to="/main/setting" class="workspace-settings" :class="{ active: activeKey === 'setting' }" :aria-current="activeKey === 'setting' ? 'page' : undefined" title="设置" aria-label="设置">
+          <WorkspaceIcon name="settings" /><span>设置</span>
+        </router-link>
+        <div class="workspace-local"><WorkspaceIcon name="drive" /><span>本地工作区</span>
+          <button class="workspace-theme" @click="onThemeTypeChange" :aria-label="`切换${themeType === 'dark' ? '浅' : '深'}色主题`" :title="`切换${themeType === 'dark' ? '浅' : '深'}色主题`"><WorkspaceIcon :name="themeType === 'dark' ? 'moon' : 'sun'" /></button>
+        </div>
       </div>
-      <n-menu class="kb-main-menu" collapsed
-        v-model:value="activeKey"
-        :options="menuOptions"
-        responsive
-        :on-update:value="onMenuUpdate"
-      />
-      <div class="kb-main-option">
-        <n-button text class="theme" @click="onThemeTypeChange" :title="`切换${themeType === 'dark' ? '浅': '深'}色主题`">
-          <n-icon :class="`iconfont-kb icon-${themeType === 'dark' ? 'moon': 'sun'}`" />
-        </n-button>
-      </div>
-    </n-layout-sider>
-    <n-layout-content>
-      <router-view />
-    </n-layout-content>
-  </n-layout>
+    </aside>
+    <div class="workspace-main">
+      <header class="workspace-topbar">
+        <div class="workspace-breadcrumb"><router-link to="/main/repository">工作空间</router-link><span>/</span><span>{{ currentPageLabel }}</span><template v-if="isDetail"><span>/</span><span>详情</span></template></div>
+        <div class="workspace-connection" :class="connection" role="status"><i></i>{{ connectionLabel }}</div>
+      </header>
+      <main ref="content" id="workspace-content" class="workspace-content" tabindex="-1"><router-view /></main>
+    </div>
+  </div>
 </template>
 <script>
-  import { defineComponent, onBeforeUnmount, ref, watch } from 'vue'
+  import { defineComponent, onBeforeUnmount, onMounted, computed, getCurrentInstance, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
-  import { useDialog } from 'naive-ui'
-  import { renderIconfontIcon } from '@/libs/utils'
   import { localRead, localSave } from '@/libs/tools'
   import { THEME_TYPE_KEY, DEFAULT_THEME_TYPE } from '@/libs/enum'
   import { useTheme } from '@/mixin/app'
   import EventBus from '@/libs/eventbus'
-  import useUserStore from '@/store/user'
-  import Logo from '@/components/Logo.vue'
-
-  const menuOptions = [
-    {
-      label: '对 话',
-      key: 'chat',
-      icon: () => renderIconfontIcon('iconfont-kb icon-chat')
-    },
-    {
-      label: '搜 索',
-      key: 'search',
-      icon: () => renderIconfontIcon('iconfont-kb icon-search2')
-    },
-    {
-      label: '知识库',
-      key: 'repository',
-      icon: () => renderIconfontIcon('iconfont-kb icon-knowledge')
-    },
-    {
-      label: '文档库',
-      key: 'docset',
-      icon: () => renderIconfontIcon('iconfont-kb icon-docset')
-    },
-    {
-      label: '设 置',
-      key: 'setting',
-      icon: () => renderIconfontIcon('iconfont-kb icon-setting2')
-    }
-  ]
+  import WorkspaceIcon from '@/components/WorkspaceIcon.vue'
 
   export default defineComponent({
     components: {
-      Logo
+      WorkspaceIcon
     },
     setup() {
       const router = useRouter()
-      const userStore = useUserStore()
-      const dialog = useDialog()
+      const { proxy } = getCurrentInstance()
+      const workspaceNav = [
+        { key: 'repository', label: '知识库', icon: 'folder' },
+        { key: 'chat', label: '对话', icon: 'chat' },
+        { key: 'search', label: '搜索', icon: 'search' },
+        { key: 'docset', label: '文档库', icon: 'document' }
+      ]
+      const currentPageLabel = computed(() => [...workspaceNav, { key: 'setting', label: '设置' }, { key: 'appinfo', label: '应用' }].find(item => router.currentRoute.value.path.split('/').includes(item.key))?.label || '工作空间')
+      const isDetail = computed(() => router.currentRoute.value.path.endsWith('/detail'))
+      const connection = ref('checking')
+      const connectionLabel = computed(() => ({ checking: '连接中', online: '本地服务已连接', offline: '本地服务未连接' }[connection.value]))
+      const checkConnection = async () => {
+        try {
+          const result = await proxy.$api.get('/health', {}, { timeout: 5000 })
+          connection.value = result.success && result.data?.status === 'ok' ? 'online' : 'offline'
+        } catch { connection.value = 'offline' }
+      }
+      let healthTimer
+      onMounted(() => { checkConnection(); healthTimer = setInterval(checkConnection, 60000) })
+      onBeforeUnmount(() => clearInterval(healthTimer))
       const { naviType } = useTheme()
       const getKeyByPath = (path) => {
         const currentPaths = path.split('/')
-        return currentPaths.find(item => menuOptions.map(menu => menu.key).includes(item))
+        return currentPaths.find(item => [...workspaceNav.map(menu => menu.key), 'setting', 'appinfo'].includes(item))
       }
       const activeKey = ref(getKeyByPath(router.currentRoute.value.path))
       const themeType = ref(localRead(THEME_TYPE_KEY) || DEFAULT_THEME_TYPE) // light, dark
@@ -100,27 +95,6 @@
         let key = getKeyByPath(newRouter.path)
         activeKey.value = key
       }, { immediate: true })
-
-      const onMenuUpdate = (key) => {
-        activeKey.value = key
-        let path = '/'
-        if (key === 'chat') {
-          path = '/main/chat'
-        } else if (key === 'repository') {
-          path = '/main/repository'
-        } else if (key === 'setting') {
-          path = '/main/setting'
-        } else if (key === 'search') {
-          path = '/main/search'
-        } else if (key === 'docset') {
-          path = '/main/docset'
-        } else if (key === 'appinfo') {
-          path = '/main/appinfo'
-        }
-        router.push({
-          path
-        })
-      }
 
       const synth = window.speechSynthesis
       const speech = new SpeechSynthesisUtterance()
@@ -152,10 +126,10 @@
         EventBus.off('on-theme-type-change', onThemeTypeChange)
       })
       return {
+        workspaceNav, currentPageLabel, isDetail, connection, connectionLabel,
         themeType, naviType,
         activeKey,
-        menuOptions,
-        onMenuUpdate, onThemeTypeChange
+        onThemeTypeChange
       }
     }
   })

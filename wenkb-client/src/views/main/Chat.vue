@@ -98,13 +98,13 @@
         <div class="kb-chat-info">
           <n-icon class="iconfont-kb icon-knowledge"></n-icon>
           <n-dropdown trigger="hover" :options="reposOptions" :on-select="onReposSelect">
-            <span title="切换对话知识库">{{ selectedRepos.reposNm }}</span>
+            <span title="切换对话知识库">{{ selectedRepos.reposNm || '选择知识库' }}</span>
           </n-dropdown>
           <n-icon class="iconfont icon-unfoldmore"></n-icon>
         </div>
         <div class="kb-chat-option">
           <n-button circle @click="turnToRepos" title="知识库详情"><n-icon class="iconfont icon-undovariant"></n-icon></n-button>
-          <n-button round @click="addChat">
+          <n-button type="primary" @click="addChat">
             <template #icon>
               <n-icon class="iconfont-kb icon-chat-add"></n-icon>
             </template>
@@ -131,6 +131,12 @@
         <n-empty v-if="chatList.length === 0"/>
       </n-layout-sider>
       <n-layout-content content-style="padding: 24px;">
+        <div v-if="!selectedChatId" class="workspace-welcome">
+          <WorkspaceIcon name="chat" /><h1>让知识，回应你的问题</h1>
+          <p>{{ selectedReposId ? '基于知识库中的资料展开对话，在回答中追溯信息来源。' : '先创建知识库并导入资料，再开始你的第一段对话。' }}</p>
+          <n-button type="primary" @click="selectedReposId ? addChat() : router.push('/main/repository')">{{ selectedReposId ? '开始新对话' : '前往知识库' }}</n-button>
+          <n-button text @click="router.push('/main/setting')">配置聊天模型 <span aria-hidden="true">→</span></n-button>
+        </div>
         <keep-alive>
           <Content :reposId="selectedReposId" :chatId="selectedChatId" :key="selectedChatId" v-if="selectedChatId" @on-send-first-message="onSendFirstMessage" />
         </keep-alive>
@@ -147,11 +153,12 @@
   import { CURRENT_REPOS_ID_KEY } from '@/libs/enum'
   import Content from './chat/Content.vue'
   import ChatForm from './chat/form/ChatForm.vue'
+  import WorkspaceIcon from '@/components/WorkspaceIcon.vue'
 
   export default defineComponent({
     components: {
       NCard, NLayout, NLayoutSider, NLayoutContent, NMenu, NButton, NIcon, NList, NListItem, NThing, NEllipsis, NDropdown,
-      Content
+      Content, WorkspaceIcon
     },
     setup() {
       const dialog = useDialog()
@@ -203,14 +210,7 @@
             selectedReposId.value = reposList.value[0].reposId
           } else {
             selectedReposId.value = ''
-            dialogConfirm(dialog, {
-              title: '创建知识库确认',
-              content: '您还没有创建知识库，是否去创建一个知识库？',
-              type: 'warning',
-              onPositiveClick: (e, dialog) => {
-                router.push(`/main/repository`)
-              }
-            })
+
           }
         }).catch(err => {
           console.error(err)
@@ -349,6 +349,7 @@
         }
       }
       return {
+        router,
         selectedRepos,
         reposOptions,
         chatOptions,
