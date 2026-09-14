@@ -66,15 +66,15 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             self.assertTrue(self.rtm.cell(row, 10).value)
             self.assertTrue(self.rtm.cell(row, 11).value)
 
-    def test_change_history_has_twenty_two_numbered_records_and_key_changes(self):
+    def test_change_history_has_twenty_four_numbered_records_and_key_changes(self):
         records = []
-        for row in range(3, 25):
+        for row in range(3, 27):
             sequence = self.history.cell(row, 2).value
             self.assertEqual(row - 2, sequence)
             change_date = self.history.cell(row, 3).value
             self.assertIsInstance(change_date, (date, datetime))
             normalized_date = change_date.date() if isinstance(change_date, datetime) else change_date
-            self.assertLessEqual(normalized_date, date(2026, 9, 6))
+            self.assertLessEqual(normalized_date, date(2026, 9, 14))
             self.assertTrue(self.history.cell(row, 4).value)
             self.assertTrue(self.history.cell(row, 5).value)
             self.assertEqual(self.history.cell(row, 12).value, 25)
@@ -89,14 +89,15 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             "embedding",
             "架构与知识点",
             "283e2c8",
+            "2431eca",
             "变更履历",
         ):
             self.assertIn(keyword, content)
 
     def test_history_summary_and_workbook_formula_are_present(self):
-        self.assertEqual(self.history.cell(25, 2).value, "SUM")
-        self.assertEqual(self.history.cell(25, 12).value, 25)
-        self.assertEqual(self.history.cell(25, 13).value, "=SUM(M3:M24)")
+        self.assertEqual(self.history.cell(27, 2).value, "SUM")
+        self.assertEqual(self.history.cell(27, 12).value, 25)
+        self.assertEqual(self.history.cell(27, 13).value, "=SUM(M3:M26)")
 
     def test_new_maintenance_history_records_are_present(self):
         self.assertEqual(self.history.cell(23, 2).value, 21)
@@ -112,6 +113,16 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
         self.assertIn("Excel 需求跟踪矩阵", second_change)
         self.assertEqual(self.history.cell(23, 12).value, 25)
         self.assertEqual(self.history.cell(24, 12).value, 25)
+
+        self.assertEqual(self.history.cell(25, 2).value, 23)
+        self.assertEqual(self.history.cell(26, 2).value, 24)
+        self.assertEqual(self.history.cell(25, 3).value, datetime(2026, 9, 13))
+        self.assertEqual(self.history.cell(26, 3).value, datetime(2026, 9, 14))
+        self.assertIn("浅色工作空间界面改版", str(self.history.cell(25, 4).value))
+        self.assertIn("2431eca", str(self.history.cell(25, 4).value))
+        self.assertIn("设计用RTM", str(self.history.cell(26, 4).value))
+        self.assertEqual("李子昂", self.history.cell(25, 7).value)
+        self.assertEqual("李子昂", self.history.cell(26, 7).value)
 
     def test_maintenance_records_are_reflected_in_requirement_details(self):
         expected_keywords = {
@@ -182,10 +193,38 @@ class RequirementTraceabilityMatrixTest(unittest.TestCase):
             fr017_categories,
         )
 
+        li_ziang_rows = {
+            next(row for row in fr004_rows if self.rtm.cell(row, 5).value == "知识库查看"),
+            next(row for row in fr017_rows if self.rtm.cell(row, 5).value == "文档集创建与维护"),
+        }
         for row in [*fr004_rows, *fr017_rows]:
             self.assertTrue(self.rtm.cell(row, 6).value)
-            self.assertEqual("杨帆", self.rtm.cell(row, 10).value)
+            expected_owner = "李子昂" if row in li_ziang_rows else "杨帆"
+            self.assertEqual(expected_owner, self.rtm.cell(row, 10).value)
             self.assertEqual("杨帆", self.rtm.cell(row, 11).value)
+
+    def test_light_workspace_change_is_reflected_in_design_rtm(self):
+        expected = {
+            ("FR-004", "知识库查看"): ("网格/列表切换", "失败重试"),
+            ("FR-014", "知识库问答"): ("欢迎态", "模型配置引导"),
+            ("FR-016", "全局搜索"): ("搜索前欢迎态", "无结果反馈"),
+            ("FR-017", "文档集创建与维护"): ("共用搜索", "空状态组件"),
+            ("NFR-001", "可用性"): ("本地服务连接状态", "加载骨架"),
+            ("NFR-005", "可维护性"): ("LibraryPage", "6 项自动化测试"),
+            ("NFR-007", "兼容性"): ("700 像素断点", "无横向溢出"),
+        }
+        matched = set()
+        for row in range(1, self.rtm.max_row + 1):
+            key = (self.rtm.cell(row, 2).value, self.rtm.cell(row, 5).value)
+            if key not in expected:
+                continue
+            detail = str(self.rtm.cell(row, 6).value)
+            for keyword in expected[key]:
+                self.assertIn(keyword, detail)
+            self.assertEqual("李子昂", self.rtm.cell(row, 10).value)
+            self.assertEqual("杨帆", self.rtm.cell(row, 11).value)
+            matched.add(key)
+        self.assertEqual(set(expected), matched)
 
 
 if __name__ == "__main__":
