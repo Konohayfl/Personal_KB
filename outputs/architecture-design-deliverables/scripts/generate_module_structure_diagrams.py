@@ -6,8 +6,9 @@ from typing import Iterable
 from PIL import Image, ImageDraw, ImageFont
 
 
-ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = ROOT / "docs" / "images" / "module-structure"
+ROOT = Path(__file__).resolve().parents[3]
+DELIVERABLE_DIR = ROOT / "outputs" / "architecture-design-deliverables"
+OUTPUT_DIR = DELIVERABLE_DIR / "images" / "module-structure"
 WIDTH, HEIGHT = 2700, 1700
 FONT = Path(r"C:\Windows\Fonts\msyh.ttc")
 FONT_BOLD = Path(r"C:\Windows\Fonts\msyhbd.ttc")
